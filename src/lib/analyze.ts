@@ -9,7 +9,6 @@ export type ApiKeyInfo = {
   workspace_id?: string | null;
   created_by?: { id?: string; type?: string } | null;
   partial_key_hint?: string | null;
-  raw?: Record<string, unknown>;
 };
 
 export type FetchKeyResult =
