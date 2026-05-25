@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "securityfall" },
+      { name: "description", content: "Secure Email Guardian analyzes email addresses to provide security diagnostics and prevention advice." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "securityfall" },
+      { property: "og:description", content: "Secure Email Guardian analyzes email addresses to provide security diagnostics and prevention advice." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "securityfall" },
+      { name: "twitter:description", content: "Secure Email Guardian analyzes email addresses to provide security diagnostics and prevention advice." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/815113f2-e7fb-4580-9ad8-0a831f9efa87" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/815113f2-e7fb-4580-9ad8-0a831f9efa87" },
     ],
     links: [
       {
