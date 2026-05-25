@@ -70,7 +70,6 @@ export const fetchApiKey = createServerFn({ method: "POST" })
         workspace_id: (json.workspace_id as string) ?? null,
         created_by: (json.created_by as ApiKeyInfo["created_by"]) ?? null,
         partial_key_hint: (json.partial_key_hint as string) ?? null,
-        raw: json,
       },
     };
   });
