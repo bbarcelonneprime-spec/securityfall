@@ -82,6 +82,7 @@ function renderMarkdown(md: string) {
 
 function Index() {
   const analyze = useServerFn(analyzeEmail);
+  const chatBotFn = useServerFn(chatWithBot);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
