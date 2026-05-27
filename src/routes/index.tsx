@@ -87,6 +87,42 @@ function Index() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Chatbot state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
+    { role: "assistant", content: "Bonjour ! Je suis ton assistant cybersécurité. Pose-moi tes questions sur la sécurité des e-mails, les mots de passe, le phishing ou toute autre question numérique !" },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const sendChatMessage = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    const newMessages = [...chatMessages, { role: "user" as const, content: userMessage }];
+    setChatMessages(newMessages);
+    setChatLoading(true);
+
+    try {
+      const res = await chatBotFn({ data: { messages: newMessages } });
+      setChatMessages((prev) => [...prev, { role: "assistant", content: res.content }]);
+    } catch (err) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Erreur : ${err instanceof Error ? err.message : "Problème de connexion."}` },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, chatLoading]);
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
