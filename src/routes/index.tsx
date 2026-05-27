@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, type FormEvent } from "react";
-import { ShieldCheck, Mail, Loader2, AlertCircle, Download } from "lucide-react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
+import { ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
+import { chatWithBot } from "../lib/chatbot.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -81,10 +82,47 @@ function renderMarkdown(md: string) {
 
 function Index() {
   const analyze = useServerFn(analyzeEmail);
+  const chatBotFn = useServerFn(chatWithBot);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Chatbot state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
+    { role: "assistant", content: "Bonjour ! Je suis ton assistant cybersécurité. Pose-moi tes questions sur la sécurité des e-mails, les mots de passe, le phishing ou toute autre question numérique !" },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const sendChatMessage = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    const newMessages = [...chatMessages, { role: "user" as const, content: userMessage }];
+    setChatMessages(newMessages);
+    setChatLoading(true);
+
+    try {
+      const res = await chatBotFn({ data: { messages: newMessages } });
+      setChatMessages((prev) => [...prev, { role: "assistant", content: res.content }]);
+    } catch (err) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Erreur : ${err instanceof Error ? err.message : "Problème de connexion."}` },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, chatLoading]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -196,6 +234,95 @@ function Index() {
           Conseils éducatifs générés par IA. Ne remplace pas un audit de sécurité professionnel.
         </footer>
       </div>
+
+      {/* Chatbot floating button */}
+      <button
+        type="button"
+        onClick={() => setChatOpen((prev) => !prev)}
+        className="fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition hover:scale-105 hover:bg-slate-800"
+        aria-label="Ouvrir le chatbot"
+      >
+        {chatOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+      </button>
+
+      {/* Chatbot window */}
+      {chatOpen && (
+        <div className="fixed bottom-24 right-6 z-50 flex w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-[26rem]">
+          {/* Header */}
+          <div className="flex items-center gap-3 bg-slate-900 px-4 py-3 text-white">
+            <Bot className="h-5 w-5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Assistant Cybersécurité</p>
+              <p className="text-xs text-slate-300">Pose tes questions</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setChatOpen(false)}
+              className="rounded-lg p-1 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+              aria-label="Fermer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex max-h-[24rem] flex-col gap-3 overflow-y-auto bg-slate-50 p-4">
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+              >
+                <div
+                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${
+                    msg.role === "assistant" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {msg.role === "assistant" ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                </div>
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "assistant"
+                      ? "rounded-tl-none bg-white text-slate-800 shadow-sm"
+                      : "rounded-tr-none bg-slate-900 text-white"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
+                  <Bot className="h-3.5 w-3.5" />
+                </div>
+                <div className="rounded-2xl rounded-tl-none bg-white px-3.5 py-2.5 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Input */}
+          <form onSubmit={sendChatMessage} className="flex items-center gap-2 border-t border-slate-200 bg-white px-3 py-3">
+            <input
+              type="text"
+              placeholder="Ta question cybersécurité..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+            />
+            <button
+              type="submit"
+              disabled={chatLoading || !chatInput.trim()}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Envoyer"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+      )}
     </main>
   );
 }
