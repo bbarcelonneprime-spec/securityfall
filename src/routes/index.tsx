@@ -167,11 +167,27 @@ function Index() {
         )}
 
         {result && (
-          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500">
-              <ShieldCheck className="h-4 w-4" />
-              Diagnostic de sécurité
+          <section
+            id="diagnostic-result"
+            className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                <ShieldCheck className="h-4 w-4" />
+                Diagnostic de sécurité
+              </div>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Exporter en PDF
+              </button>
             </div>
+            <p className="mb-4 text-xs text-slate-500">
+              Analyse pour <span className="font-medium text-slate-700">{email}</span>
+            </p>
             <article className="prose prose-slate max-w-none">{renderMarkdown(result)}</article>
           </section>
         )}
