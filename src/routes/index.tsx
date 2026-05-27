@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, type FormEvent } from "react";
-import { ShieldCheck, Mail, Loader2, AlertCircle, Download } from "lucide-react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
+import { ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
+import { chatWithBot } from "../lib/chatbot.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
