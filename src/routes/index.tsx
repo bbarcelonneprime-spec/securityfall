@@ -435,6 +435,7 @@ function Index() {
             </div>
           )}
         </main>
+      ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden bg-[#0b0f1c] text-slate-100 sm:flex-row">
           {/* Ambient aurora background */}
