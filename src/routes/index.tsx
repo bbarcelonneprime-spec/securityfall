@@ -611,8 +611,6 @@ function Index() {
           </section>
         </main>
       )}
-        </main>
-      )}
     </>
   );
 }
