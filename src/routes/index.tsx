@@ -3,11 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
-  Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare,
+  Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
 } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage } from "../lib/alex.functions";
+import alexLogo from "@/assets/alex-logo.jpg";
 
 export const Route = createFileRoute("/")({
   component: Index,
