@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User } from "lucide-react";
+import {
+  ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
+  Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare,
+} from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
+import { chatWithAlex, generateAlexImage } from "../lib/alex.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -20,7 +24,6 @@ export const Route = createFileRoute("/")({
 });
 
 function renderMarkdown(md: string) {
-  // Minimal markdown: headings, bold, lists, paragraphs
   const lines = md.split("\n");
   const out: Array<React.ReactNode> = [];
   let listBuffer: string[] = [];
@@ -48,47 +51,67 @@ function renderMarkdown(md: string) {
     const line = raw.trimEnd();
     if (/^#{3}\s+/.test(line)) {
       flushList();
-      out.push(
-        <h3 key={out.length} className="mt-5 text-lg font-semibold text-slate-900"
-          dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{3}\s+/, "")) }} />,
-      );
+      out.push(<h3 key={out.length} className="mt-5 text-lg font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{3}\s+/, "")) }} />);
     } else if (/^#{2}\s+/.test(line)) {
       flushList();
-      out.push(
-        <h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900"
-          dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{2}\s+/, "")) }} />,
-      );
+      out.push(<h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{2}\s+/, "")) }} />);
     } else if (/^#\s+/.test(line)) {
       flushList();
-      out.push(
-        <h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900"
-          dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#\s+/, "")) }} />,
-      );
+      out.push(<h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#\s+/, "")) }} />);
     } else if (/^\s*[-*]\s+/.test(line)) {
       listBuffer.push(line.replace(/^\s*[-*]\s+/, ""));
     } else if (line.trim() === "") {
       flushList();
     } else {
       flushList();
-      out.push(
-        <p key={out.length} className="my-2 leading-relaxed text-slate-700"
-          dangerouslySetInnerHTML={{ __html: inline(line) }} />,
-      );
+      out.push(<p key={out.length} className="my-2 leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: inline(line) }} />);
     }
   }
   flushList();
   return out;
 }
 
+type AlexMsg = { role: "user" | "assistant"; content: string; imageUrl?: string };
+type AlexConversation = { id: string; title: string; messages: AlexMsg[]; createdAt: number };
+
+const ALEX_STORAGE_KEY = "alex_ia_conversations_v1";
+
+function loadAlexConversations(): AlexConversation[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ALEX_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as AlexConversation[];
+  } catch {
+    return [];
+  }
+}
+
+function saveAlexConversations(convs: AlexConversation[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ALEX_STORAGE_KEY, JSON.stringify(convs));
+  } catch {
+    /* ignore */
+  }
+}
+
 function Index() {
   const analyze = useServerFn(analyzeEmail);
   const chatBotFn = useServerFn(chatWithBot);
+  const alexFn = useServerFn(chatWithAlex);
+  const alexImageFn = useServerFn(generateAlexImage);
+
+  // View toggle
+  const [view, setView] = useState<"email" | "alex">("email");
+
+  // Email analyzer state
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Chatbot state
+  // Cybersecurity chatbot state (existing floating)
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
     { role: "assistant", content: "Bonjour ! Je suis ton assistant cybersécurité. Pose-moi tes questions sur la sécurité des e-mails, les mots de passe, le phishing ou toute autre question numérique !" },
@@ -97,16 +120,121 @@ function Index() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Alex IA state
+  const [alexConvs, setAlexConvs] = useState<AlexConversation[]>([]);
+  const [alexCurrentId, setAlexCurrentId] = useState<string | null>(null);
+  const [alexInput, setAlexInput] = useState("");
+  const [alexLoading, setAlexLoading] = useState(false);
+  const [alexImageMode, setAlexImageMode] = useState(false);
+  const [alexError, setAlexError] = useState<string | null>(null);
+  const alexEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loaded = loadAlexConversations();
+    setAlexConvs(loaded);
+    if (loaded.length > 0) setAlexCurrentId(loaded[0].id);
+  }, []);
+
+  useEffect(() => {
+    saveAlexConversations(alexConvs);
+  }, [alexConvs]);
+
+  const currentConv = alexConvs.find((c) => c.id === alexCurrentId) ?? null;
+
+  const newAlexConversation = () => {
+    const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const conv: AlexConversation = {
+      id,
+      title: "Nouvelle conversation",
+      messages: [
+        { role: "assistant", content: "Salut ! Je suis **Alex IA**, ton assistant IA généraliste. Je peux discuter de tout, t'aider à écrire, coder, réfléchir… et même générer des images. Comment puis-je t'aider ?" },
+      ],
+      createdAt: Date.now(),
+    };
+    setAlexConvs((prev) => [conv, ...prev]);
+    setAlexCurrentId(id);
+    setAlexError(null);
+  };
+
+  const deleteAlexConversation = (id: string) => {
+    setAlexConvs((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      if (alexCurrentId === id) setAlexCurrentId(next[0]?.id ?? null);
+      return next;
+    });
+  };
+
+  const ensureCurrentConv = (): AlexConversation => {
+    if (currentConv) return currentConv;
+    const id = `conv-${Date.now()}`;
+    const conv: AlexConversation = {
+      id,
+      title: "Nouvelle conversation",
+      messages: [],
+      createdAt: Date.now(),
+    };
+    setAlexConvs((prev) => [conv, ...prev]);
+    setAlexCurrentId(id);
+    return conv;
+  };
+
+  const updateConv = (id: string, updater: (c: AlexConversation) => AlexConversation) => {
+    setAlexConvs((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
+  };
+
+  const sendAlexMessage = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!alexInput.trim() || alexLoading) return;
+    const conv = ensureCurrentConv();
+    const userMsg: AlexMsg = { role: "user", content: alexInput.trim() };
+    const promptText = alexInput.trim();
+    setAlexInput("");
+    setAlexError(null);
+
+    const newMessages = [...conv.messages, userMsg];
+    updateConv(conv.id, (c) => ({
+      ...c,
+      messages: newMessages,
+      title: c.messages.filter((m) => m.role === "user").length === 0 ? promptText.slice(0, 40) : c.title,
+    }));
+    setAlexLoading(true);
+
+    try {
+      if (alexImageMode) {
+        const res = await alexImageFn({ data: { prompt: promptText } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: `Voici l'image générée pour : *${promptText}*`, imageUrl: res.imageUrl }],
+        }));
+      } else {
+        const historyForApi = newMessages
+          .filter((m) => !m.imageUrl)
+          .map((m) => ({ role: m.role, content: m.content }));
+        const res = await alexFn({ data: { messages: historyForApi } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      }
+    } catch (err) {
+      setAlexError(err instanceof Error ? err.message : "Erreur inconnue.");
+    } finally {
+      setAlexLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    alexEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [currentConv?.messages, alexLoading]);
+
   const sendChatMessage = async (e: FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
-
     const userMessage = chatInput.trim();
     setChatInput("");
     const newMessages = [...chatMessages, { role: "user" as const, content: userMessage }];
     setChatMessages(newMessages);
     setChatLoading(true);
-
     try {
       const res = await chatBotFn({ data: { messages: newMessages } });
       setChatMessages((prev) => [...prev, { role: "assistant", content: res.content }]);
@@ -139,190 +267,372 @@ function Index() {
     }
   };
 
+  const toggleView = () => {
+    setView((v) => {
+      const next = v === "email" ? "alex" : "email";
+      if (next === "alex" && alexConvs.length === 0) {
+        // create first conv lazily
+        setTimeout(() => newAlexConversation(), 0);
+      }
+      return next;
+    });
+  };
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
-        <header className="mb-10 text-center">
-          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
-            <ShieldCheck className="h-7 w-7" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Analyseur de sécurité e-mail
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-slate-600">
-            Obtiens un diagnostic pédagogique et 3 conseils concrets pour sécuriser ton adresse
-            e-mail, sans jamais transmettre ton mot de passe.
-          </p>
-        </header>
-
-        <form
-          onSubmit={onSubmit}
-          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-        >
-          <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-800">
-            Ton adresse e-mail
-          </label>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                id="email"
-                type="email"
-                required
-                maxLength={254}
-                autoComplete="email"
-                placeholder="prenom.nom@exemple.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading || !email}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Analyse…
-                </>
-              ) : (
-                "Analyser"
-              )}
-            </button>
-          </div>
-          <p className="mt-3 text-xs text-slate-500">
-            Aucun mot de passe n'est demandé. Seule l'adresse est analysée pour un diagnostic
-            général.
-          </p>
-        </form>
-
-        {error && (
-          <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <p>{error}</p>
-          </div>
-        )}
-
-        {result && (
-          <section
-            id="diagnostic-result"
-            className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                <ShieldCheck className="h-4 w-4" />
-                Diagnostic de sécurité
-              </div>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Exporter en PDF
-              </button>
-            </div>
-            <p className="mb-4 text-xs text-slate-500">
-              Analyse pour <span className="font-medium text-slate-700">{email}</span>
-            </p>
-            <article className="prose prose-slate max-w-none">{renderMarkdown(result)}</article>
-          </section>
-        )}
-
-        <footer className="mt-12 text-center text-xs text-slate-400">
-          Conseils éducatifs générés par IA. Ne remplace pas un audit de sécurité professionnel.
-        </footer>
-      </div>
-
-      {/* Chatbot floating button */}
+    <>
+      {/* Top-left toggle button */}
       <button
         type="button"
-        onClick={() => setChatOpen((prev) => !prev)}
-        className="fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition hover:scale-105 hover:bg-slate-800"
-        aria-label="Ouvrir le chatbot"
+        onClick={toggleView}
+        className="fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
+        aria-label="Basculer entre Analyseur et Alex IA"
       >
-        {chatOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        <Sparkles className="h-4 w-4" />
+        {view === "email" ? "Alex IA" : "Analyseur e-mail"}
       </button>
 
-      {/* Chatbot window */}
-      {chatOpen && (
-        <div className="fixed bottom-24 right-6 z-50 flex w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-[26rem]">
-          {/* Header */}
-          <div className="flex items-center gap-3 bg-slate-900 px-4 py-3 text-white">
-            <Bot className="h-5 w-5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Assistant Cybersécurité</p>
-              <p className="text-xs text-slate-300">Pose tes questions</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setChatOpen(false)}
-              className="rounded-lg p-1 text-slate-300 transition hover:bg-slate-800 hover:text-white"
-              aria-label="Fermer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Messages */}
-          <div className="flex max-h-[24rem] flex-col gap-3 overflow-y-auto bg-slate-50 p-4">
-            {chatMessages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-              >
-                <div
-                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${
-                    msg.role === "assistant" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  {msg.role === "assistant" ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                </div>
-                <div
-                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    msg.role === "assistant"
-                      ? "rounded-tl-none bg-white text-slate-800 shadow-sm"
-                      : "rounded-tr-none bg-slate-900 text-white"
-                  }`}
-                >
-                  {msg.content}
-                </div>
+      {view === "email" ? (
+        <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+          <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+            <header className="mb-10 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
+                <ShieldCheck className="h-7 w-7" />
               </div>
-            ))}
-            {chatLoading && (
-              <div className="flex items-start gap-2.5">
-                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
-                  <Bot className="h-3.5 w-3.5" />
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Analyseur de sécurité e-mail
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-slate-600">
+                Obtiens un diagnostic pédagogique et 3 conseils concrets pour sécuriser ton adresse
+                e-mail, sans jamais transmettre ton mot de passe.
+              </p>
+            </header>
+
+            <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-800">
+                Ton adresse e-mail
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    maxLength={254}
+                    autoComplete="email"
+                    placeholder="prenom.nom@exemple.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                  />
                 </div>
-                <div className="rounded-2xl rounded-tl-none bg-white px-3.5 py-2.5 shadow-sm">
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
-                </div>
+                <button
+                  type="submit"
+                  disabled={loading || !email}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Analyse…</>) : ("Analyser")}
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Aucun mot de passe n'est demandé. Seule l'adresse est analysée pour un diagnostic général.
+              </p>
+            </form>
+
+            {error && (
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <p>{error}</p>
               </div>
             )}
-            <div ref={chatEndRef} />
+
+            {result && (
+              <section id="diagnostic-result" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                    <ShieldCheck className="h-4 w-4" />
+                    Diagnostic de sécurité
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Exporter en PDF
+                  </button>
+                </div>
+                <p className="mb-4 text-xs text-slate-500">
+                  Analyse pour <span className="font-medium text-slate-700">{email}</span>
+                </p>
+                <article className="prose prose-slate max-w-none">{renderMarkdown(result)}</article>
+              </section>
+            )}
+
+            <footer className="mt-12 text-center text-xs text-slate-400">
+              Conseils éducatifs générés par IA. Ne remplace pas un audit de sécurité professionnel.
+            </footer>
           </div>
 
-          {/* Input */}
-          <form onSubmit={sendChatMessage} className="flex items-center gap-2 border-t border-slate-200 bg-white px-3 py-3">
-            <input
-              type="text"
-              placeholder="Ta question cybersécurité..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
-            />
-            <button
-              type="submit"
-              disabled={chatLoading || !chatInput.trim()}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Envoyer"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
-        </div>
+          {/* Cybersecurity floating chatbot (only on email view) */}
+          <button
+            type="button"
+            onClick={() => setChatOpen((prev) => !prev)}
+            className="fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition hover:scale-105 hover:bg-slate-800"
+            aria-label="Ouvrir le chatbot"
+          >
+            {chatOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+          </button>
+
+          {chatOpen && (
+            <div className="fixed bottom-24 right-6 z-50 flex w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-[26rem]">
+              <div className="flex items-center gap-3 bg-slate-900 px-4 py-3 text-white">
+                <Bot className="h-5 w-5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Assistant Cybersécurité</p>
+                  <p className="text-xs text-slate-300">Pose tes questions</p>
+                </div>
+                <button type="button" onClick={() => setChatOpen(false)} className="rounded-lg p-1 text-slate-300 transition hover:bg-slate-800 hover:text-white" aria-label="Fermer">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex max-h-[24rem] flex-col gap-3 overflow-y-auto bg-slate-50 p-4">
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${msg.role === "assistant" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-700"}`}>
+                      {msg.role === "assistant" ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === "assistant" ? "rounded-tl-none bg-white text-slate-800 shadow-sm" : "rounded-tr-none bg-slate-900 text-white"}`}>
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
+                      <Bot className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-none bg-white px-3.5 py-2.5 shadow-sm">
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              <form onSubmit={sendChatMessage} className="flex items-center gap-2 border-t border-slate-200 bg-white px-3 py-3">
+                <input
+                  type="text"
+                  placeholder="Ta question cybersécurité..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                />
+                <button type="submit" disabled={chatLoading || !chatInput.trim()} className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Envoyer">
+                  <Send className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
+          )}
+        </main>
+      ) : (
+        /* ============ ALEX IA VIEW ============ */
+        <main className="flex h-screen flex-col bg-slate-950 text-slate-100 sm:flex-row">
+          {/* Sidebar */}
+          <aside className="flex w-full flex-col border-b border-slate-800 bg-slate-900/60 sm:w-72 sm:border-b-0 sm:border-r">
+            <div className="flex items-center gap-2 px-4 pb-3 pt-20 sm:pt-16">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Alex IA</p>
+                <p className="text-xs text-slate-400">Assistant généraliste</p>
+              </div>
+            </div>
+
+            <div className="px-3 pb-3">
+              <button
+                type="button"
+                onClick={newAlexConversation}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+              >
+                <Plus className="h-4 w-4" />
+                Nouvelle conversation
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-2 pb-4">
+              <p className="px-2 pb-1 text-xs uppercase tracking-wide text-slate-500">Historique</p>
+              {alexConvs.length === 0 && (
+                <p className="px-2 py-3 text-xs text-slate-500">Aucune conversation pour le moment.</p>
+              )}
+              {alexConvs.map((c) => (
+                <div
+                  key={c.id}
+                  className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition ${
+                    c.id === alexCurrentId ? "bg-slate-800 text-white" : "text-slate-300 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setAlexCurrentId(c.id)}
+                    className="flex flex-1 items-center gap-2 overflow-hidden text-left"
+                  >
+                    <MessagesSquare className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
+                    <span className="truncate">{c.title}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteAlexConversation(c.id)}
+                    className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-slate-700 hover:text-red-400 group-hover:opacity-100"
+                    aria-label="Supprimer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          {/* Chat area */}
+          <section className="flex flex-1 flex-col bg-slate-950">
+            <div className="border-b border-slate-800 px-6 py-4 pl-20 sm:pl-6">
+              <h2 className="text-lg font-semibold">
+                {currentConv?.title ?? "Alex IA"}
+              </h2>
+              <p className="text-xs text-slate-400">IA généraliste · chat & génération d'images</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+              {!currentConv && (
+                <div className="mx-auto mt-12 max-w-md text-center text-slate-400">
+                  <Sparkles className="mx-auto mb-3 h-10 w-10 text-violet-400" />
+                  <p className="text-lg font-medium text-slate-200">Bienvenue sur Alex IA</p>
+                  <p className="mt-2 text-sm">Démarre une nouvelle conversation depuis la barre latérale.</p>
+                </div>
+              )}
+              <div className="mx-auto flex max-w-3xl flex-col gap-5">
+                {currentConv?.messages.map((m, i) => (
+                  <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${m.role === "assistant" ? "bg-gradient-to-br from-violet-500 to-indigo-600" : "bg-slate-700"}`}>
+                      {m.role === "assistant" ? <Sparkles className="h-4 w-4 text-white" /> : <User className="h-4 w-4 text-white" />}
+                    </div>
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-slate-800/80 text-slate-100" : "rounded-tr-none bg-gradient-to-br from-violet-600 to-indigo-600 text-white"}`}>
+                      <div className="prose prose-invert prose-sm max-w-none">{renderMarkdownDark(m.content)}</div>
+                      {m.imageUrl && (
+                        <img src={m.imageUrl} alt="Image générée par Alex IA" className="mt-3 max-w-full rounded-lg border border-slate-700" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {alexLoading && (
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-none bg-slate-800/80 px-4 py-3">
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
+                    </div>
+                  </div>
+                )}
+                {alexError && (
+                  <div className="rounded-lg border border-red-900/50 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+                    {alexError}
+                  </div>
+                )}
+                <div ref={alexEndRef} />
+              </div>
+            </div>
+
+            <form onSubmit={sendAlexMessage} className="border-t border-slate-800 bg-slate-900/50 px-4 py-4 sm:px-8">
+              <div className="mx-auto flex max-w-3xl flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAlexImageMode((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                      alexImageMode
+                        ? "bg-violet-600 text-white"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    }`}
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Mode image {alexImageMode ? "activé" : ""}
+                  </button>
+                  {alexImageMode && (
+                    <span className="text-xs text-slate-400">Décris l'image à générer</span>
+                  )}
+                </div>
+                <div className="flex items-end gap-2">
+                  <textarea
+                    rows={1}
+                    value={alexInput}
+                    onChange={(e) => setAlexInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendAlexMessage(e as unknown as FormEvent);
+                      }
+                    }}
+                    placeholder={alexImageMode ? "Ex: un chat astronaute sur la lune, style aquarelle" : "Écris ton message à Alex…"}
+                    className="flex-1 resize-none rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                  />
+                  <button
+                    type="submit"
+                    disabled={alexLoading || !alexInput.trim()}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Envoyer"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </main>
       )}
-    </main>
+    </>
   );
+}
+
+// Markdown renderer with dark theme
+function renderMarkdownDark(md: string) {
+  const lines = md.split("\n");
+  const out: Array<React.ReactNode> = [];
+  let listBuffer: string[] = [];
+  const inline = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`([^`]+)`/g, '<code class="rounded bg-slate-900 px-1 py-0.5 text-xs">$1</code>');
+  const flushList = () => {
+    if (listBuffer.length) {
+      out.push(
+        <ul key={`ul-${out.length}`} className="my-2 list-disc space-y-1 pl-5">
+          {listBuffer.map((l, i) => (
+            <li key={i} dangerouslySetInnerHTML={{ __html: inline(l) }} />
+          ))}
+        </ul>,
+      );
+      listBuffer = [];
+    }
+  };
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^#{1,3}\s+/.test(line)) {
+      flushList();
+      out.push(<p key={out.length} className="my-1 font-semibold" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{1,3}\s+/, "")) }} />);
+    } else if (/^\s*[-*]\s+/.test(line)) {
+      listBuffer.push(line.replace(/^\s*[-*]\s+/, ""));
+    } else if (line.trim() === "") {
+      flushList();
+    } else {
+      flushList();
+      out.push(<p key={out.length} className="my-1" dangerouslySetInnerHTML={{ __html: inline(line) }} />);
+    }
+  }
+  flushList();
+  return out;
 }
