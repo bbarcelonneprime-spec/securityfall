@@ -435,56 +435,67 @@ function Index() {
             </div>
           )}
         </main>
-      ) : (
-        /* ============ ALEX IA VIEW ============ */
-        <main className="flex h-screen flex-col bg-slate-950 text-slate-100 sm:flex-row">
-          {/* Sidebar */}
-          <aside className="flex w-full flex-col border-b border-slate-800 bg-slate-900/60 sm:w-72 sm:border-b-0 sm:border-r">
-            <div className="flex items-center gap-2 px-4 pb-3 pt-20 sm:pt-16">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Alex IA</p>
-                <p className="text-xs text-slate-400">Assistant généraliste</p>
-              </div>
-            </div>
+        /* ============ ALEX IA VIEW (Gemini-style) ============ */
+        <main className="relative flex h-screen flex-col overflow-hidden bg-[#0b0f1c] text-slate-100 sm:flex-row">
+          {/* Ambient aurora background */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-indigo-700/20 blur-[120px]" />
+            <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-violet-600/15 blur-[120px]" />
+            <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-blue-700/15 blur-[120px]" />
+          </div>
 
-            <div className="px-3 pb-3">
-              <button
-                type="button"
-                onClick={newAlexConversation}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
-              >
-                <Plus className="h-4 w-4" />
-                Nouvelle conversation
+          {/* Sidebar */}
+          <aside className="relative z-10 flex w-full flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:w-72 sm:border-b-0 sm:border-r">
+            <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
+              <img src={alexLogo} alt="Alex Graph" className="h-9 w-9 rounded-lg object-cover ring-1 ring-white/10" />
+              <p className="text-base font-semibold tracking-tight">Alex IA</p>
+              <button type="button" className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire">
+                <PanelLeft className="h-4 w-4" />
               </button>
             </div>
 
+            <nav className="px-3 pb-2">
+              <button
+                type="button"
+                onClick={newAlexConversation}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-white/5"
+              >
+                <Plus className="h-4 w-4" />
+                New chat
+              </button>
+              <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
+                <Search className="h-4 w-4" />
+                Search chats
+              </button>
+              <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
+                <LibraryBig className="h-4 w-4" />
+                Library
+              </button>
+            </nav>
+
             <div className="flex-1 overflow-y-auto px-2 pb-4">
-              <p className="px-2 pb-1 text-xs uppercase tracking-wide text-slate-500">Historique</p>
+              <p className="px-3 pb-2 pt-3 text-xs font-medium text-slate-500">Recents</p>
               {alexConvs.length === 0 && (
-                <p className="px-2 py-3 text-xs text-slate-500">Aucune conversation pour le moment.</p>
+                <p className="px-3 py-2 text-xs text-slate-500">Aucune conversation.</p>
               )}
               {alexConvs.map((c) => (
                 <div
                   key={c.id}
                   className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition ${
-                    c.id === alexCurrentId ? "bg-slate-800 text-white" : "text-slate-300 hover:bg-slate-800/50"
+                    c.id === alexCurrentId ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
                   }`}
                 >
                   <button
                     type="button"
                     onClick={() => setAlexCurrentId(c.id)}
-                    className="flex flex-1 items-center gap-2 overflow-hidden text-left"
+                    className="flex flex-1 items-center gap-2 overflow-hidden px-1.5 py-0.5 text-left"
                   >
-                    <MessagesSquare className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
                     <span className="truncate">{c.title}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => deleteAlexConversation(c.id)}
-                    className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-slate-700 hover:text-red-400 group-hover:opacity-100"
+                    className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"
                     aria-label="Supprimer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -495,100 +506,110 @@ function Index() {
           </aside>
 
           {/* Chat area */}
-          <section className="flex flex-1 flex-col bg-slate-950">
-            <div className="border-b border-slate-800 px-6 py-4 pl-20 sm:pl-6">
-              <h2 className="text-lg font-semibold">
-                {currentConv?.title ?? "Alex IA"}
-              </h2>
-              <p className="text-xs text-slate-400">IA généraliste · chat & génération d'images</p>
+          <section className="relative z-10 flex flex-1 flex-col">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-6 py-4 pl-20 sm:pl-6">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-medium text-slate-200">Alex</span>
+                <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs text-slate-400">2.5 Flash</span>
+              </div>
+              <button type="button" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-1.5 text-sm font-medium text-white shadow-lg shadow-indigo-900/40 transition hover:scale-[1.02]">
+                <Sparkles className="h-4 w-4" />
+                Upgrade
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
-              {!currentConv && (
-                <div className="mx-auto mt-12 max-w-md text-center text-slate-400">
-                  <Sparkles className="mx-auto mb-3 h-10 w-10 text-violet-400" />
-                  <p className="text-lg font-medium text-slate-200">Bienvenue sur Alex IA</p>
-                  <p className="mt-2 text-sm">Démarre une nouvelle conversation depuis la barre latérale.</p>
+            {/* Messages or hero */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-8">
+              {(!currentConv || currentConv.messages.length <= 1) ? (
+                <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center pb-32 text-center">
+                  <img src={alexLogo} alt="Alex Graph" className="mb-6 h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
+                  <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-4xl font-light tracking-tight text-transparent sm:text-5xl">
+                    Your move, friend!
+                  </h1>
+                  <p className="mt-3 text-sm text-slate-400">Pose une question, génère une image, ou explore une idée.</p>
+                </div>
+              ) : (
+                <div className="mx-auto flex max-w-3xl flex-col gap-5 py-6">
+                  {currentConv.messages.map((m, i) => (
+                    <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-white" : "bg-white/10"}`}>
+                        {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-white" />}
+                      </div>
+                      <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-white/5 text-slate-100 backdrop-blur" : "rounded-tr-none bg-gradient-to-br from-indigo-600 to-violet-600 text-white"}`}>
+                        <div className="prose prose-invert prose-sm max-w-none">{renderMarkdownDark(m.content)}</div>
+                        {m.imageUrl && (
+                          <img src={m.imageUrl} alt="Image générée par Alex IA" className="mt-3 max-w-full rounded-lg border border-white/10" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {alexLoading && (
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white">
+                        <img src={alexLogo} alt="Alex" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="rounded-2xl rounded-tl-none bg-white/5 px-4 py-3 backdrop-blur">
+                        <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
+                      </div>
+                    </div>
+                  )}
+                  {alexError && (
+                    <div className="rounded-lg border border-red-900/50 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+                      {alexError}
+                    </div>
+                  )}
+                  <div ref={alexEndRef} />
                 </div>
               )}
-              <div className="mx-auto flex max-w-3xl flex-col gap-5">
-                {currentConv?.messages.map((m, i) => (
-                  <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                    <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${m.role === "assistant" ? "bg-gradient-to-br from-violet-500 to-indigo-600" : "bg-slate-700"}`}>
-                      {m.role === "assistant" ? <Sparkles className="h-4 w-4 text-white" /> : <User className="h-4 w-4 text-white" />}
-                    </div>
-                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-slate-800/80 text-slate-100" : "rounded-tr-none bg-gradient-to-br from-violet-600 to-indigo-600 text-white"}`}>
-                      <div className="prose prose-invert prose-sm max-w-none">{renderMarkdownDark(m.content)}</div>
-                      {m.imageUrl && (
-                        <img src={m.imageUrl} alt="Image générée par Alex IA" className="mt-3 max-w-full rounded-lg border border-slate-700" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {alexLoading && (
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600">
-                      <Sparkles className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="rounded-2xl rounded-tl-none bg-slate-800/80 px-4 py-3">
-                      <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
-                    </div>
-                  </div>
-                )}
-                {alexError && (
-                  <div className="rounded-lg border border-red-900/50 bg-red-950/50 px-4 py-2 text-sm text-red-300">
-                    {alexError}
-                  </div>
-                )}
-                <div ref={alexEndRef} />
-              </div>
             </div>
 
-            <form onSubmit={sendAlexMessage} className="border-t border-slate-800 bg-slate-900/50 px-4 py-4 sm:px-8">
-              <div className="mx-auto flex max-w-3xl flex-col gap-2">
-                <div className="flex items-center gap-2">
+            {/* Input bar (Gemini-style pill) */}
+            <form onSubmit={sendAlexMessage} className="px-4 pb-6 pt-2 sm:px-8">
+              <div className="mx-auto max-w-3xl">
+                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#1a2138]/90 px-3 py-2 shadow-2xl shadow-black/40 backdrop-blur-xl transition focus-within:border-violet-400/40">
                   <button
                     type="button"
                     onClick={() => setAlexImageMode((v) => !v)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                      alexImageMode
-                        ? "bg-violet-600 text-white"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${
+                      alexImageMode ? "bg-violet-600 text-white" : "text-slate-300 hover:bg-white/10"
                     }`}
+                    aria-label="Mode image"
+                    title={alexImageMode ? "Mode image activé" : "Activer le mode image"}
                   >
-                    <ImageIcon className="h-3.5 w-3.5" />
-                    Mode image {alexImageMode ? "activé" : ""}
+                    {alexImageMode ? <ImageIcon className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
                   </button>
-                  {alexImageMode && (
-                    <span className="text-xs text-slate-400">Décris l'image à générer</span>
-                  )}
-                </div>
-                <div className="flex items-end gap-2">
-                  <textarea
-                    rows={1}
+                  <input
+                    type="text"
                     value={alexInput}
                     onChange={(e) => setAlexInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendAlexMessage(e as unknown as FormEvent);
-                      }
-                    }}
-                    placeholder={alexImageMode ? "Ex: un chat astronaute sur la lune, style aquarelle" : "Écris ton message à Alex…"}
-                    className="flex-1 resize-none rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                    placeholder={alexImageMode ? "Décris l'image à générer…" : "Ask Alex"}
+                    className="flex-1 bg-transparent px-1 py-1.5 text-sm text-slate-100 placeholder-slate-500 outline-none"
                   />
-                  <button
-                    type="submit"
-                    disabled={alexLoading || !alexInput.trim()}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Envoyer"
-                  >
-                    <Send className="h-4 w-4" />
+                  <span className="hidden h-2 w-2 rounded-full bg-violet-400 sm:block" />
+                  <span className="hidden items-center gap-1 rounded-full px-2 py-1 text-xs text-slate-400 sm:flex">
+                    Flash <span className="text-slate-600">▾</span>
+                  </span>
+                  <button type="button" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Micro">
+                    <Mic className="h-4 w-4" />
                   </button>
+                  {alexInput.trim() && (
+                    <button
+                      type="submit"
+                      disabled={alexLoading}
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white transition hover:scale-105 disabled:opacity-50"
+                      aria-label="Envoyer"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
+                <p className="mt-2 text-center text-xs text-slate-500">Alex IA peut faire des erreurs. Vérifie les informations importantes.</p>
               </div>
             </form>
           </section>
+        </main>
+      )}
         </main>
       )}
     </>
