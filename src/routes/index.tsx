@@ -240,6 +240,42 @@ function Index() {
     }
   };
 
+  const handleAlexFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file || alexLoading) return;
+    if (file.size > 15 * 1024 * 1024) {
+      setAlexError("Fichier trop volumineux (max 15 Mo).");
+      return;
+    }
+    const conv = ensureCurrentConv();
+    const instruction = alexInput.trim();
+    setAlexInput("");
+    setAlexError(null);
+    setAlexLoading(true);
+    updateConv(conv.id, (c) => ({
+      ...c,
+      messages: [
+        ...c.messages,
+        { role: "user", content: `📎 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse ce document."}` },
+      ],
+      title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+    }));
+    try {
+      const { fileName, content } = await extractFileText(file);
+      if (!content.trim()) throw new Error("Aucun texte extractible dans ce fichier.");
+      const res = await alexFileFn({ data: { fileName, content, instruction: instruction || undefined } });
+      updateConv(conv.id, (c) => ({
+        ...c,
+        messages: [...c.messages, { role: "assistant", content: res.content }],
+      }));
+    } catch (err) {
+      setAlexError(err instanceof Error ? err.message : "Erreur lors de l'analyse du fichier.");
+    } finally {
+      setAlexLoading(false);
+    }
+  };
+
   useEffect(() => {
     alexEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentConv?.messages, alexLoading]);
