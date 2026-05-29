@@ -227,7 +227,7 @@ function Index() {
         const historyForApi = newMessages
           .filter((m) => !m.imageUrl)
           .map((m) => ({ role: m.role, content: m.content }));
-        const res = await alexFn({ data: { messages: historyForApi } });
+        const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch } });
         updateConv(conv.id, (c) => ({
           ...c,
           messages: [...c.messages, { role: "assistant", content: res.content }],
