@@ -140,8 +140,11 @@ function Index() {
   const [alexInput, setAlexInput] = useState("");
   const [alexLoading, setAlexLoading] = useState(false);
   const [alexImageMode, setAlexImageMode] = useState(false);
+  const [alexDeepResearch, setAlexDeepResearch] = useState(false);
+  const [alexPersona, setAlexPersona] = useState<string>("general");
   const [alexError, setAlexError] = useState<string | null>(null);
   const alexEndRef = useRef<HTMLDivElement>(null);
+  const alexFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loaded = loadAlexConversations();
