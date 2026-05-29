@@ -526,6 +526,35 @@ function Index() {
               </button>
             </nav>
 
+            {/* Gems — assistants spécialisés */}
+            <div className="px-3 pb-1">
+              <p className="flex items-center gap-1.5 px-2 pb-1.5 pt-2 text-xs font-medium text-slate-500">
+                <Gem className="h-3.5 w-3.5" /> Gems
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {ALEX_GEMS.map((g) => {
+                  const GIcon = g.icon;
+                  const active = alexPersona === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setAlexPersona(g.id)}
+                      title={g.desc}
+                      className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition ${
+                        active
+                          ? "bg-violet-600/30 text-white ring-1 ring-violet-400/50"
+                          : "text-slate-300 hover:bg-white/5"
+                      }`}
+                    >
+                      <GIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{g.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               <p className="px-3 pb-2 pt-3 text-xs font-medium text-slate-500">Recents</p>
               {alexConvs.length === 0 && (
