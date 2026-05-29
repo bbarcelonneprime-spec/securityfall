@@ -114,6 +114,7 @@ function Index() {
   const chatBotFn = useServerFn(chatWithBot);
   const alexFn = useServerFn(chatWithAlex);
   const alexImageFn = useServerFn(generateAlexImage);
+  const alexFileFn = useServerFn(analyzeAlexFile);
 
   // View toggle
   const [view, setView] = useState<"email" | "alex">("email");
