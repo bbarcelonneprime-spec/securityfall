@@ -4,11 +4,23 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
+  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem,
 } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
-import { chatWithAlex, generateAlexImage } from "../lib/alex.functions";
+import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import { extractFileText } from "../lib/extract-file";
 import alexLogo from "@/assets/alex-logo.jpg";
+
+type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
+const ALEX_GEMS: GemDef[] = [
+  { id: "general", label: "Généraliste", icon: Sparkles, desc: "Assistant polyvalent" },
+  { id: "code", label: "Coach de code", icon: Code2, desc: "Aide à programmer" },
+  { id: "writer", label: "Relecteur", icon: PenLine, desc: "Améliore tes textes" },
+  { id: "travel", label: "Guide de voyage", icon: Plane, desc: "Itinéraires & conseils" },
+  { id: "chef", label: "Chef cuisinier", icon: ChefHat, desc: "Recettes & menus" },
+  { id: "tutor", label: "Tuteur", icon: GraduationCap, desc: "Explications pas à pas" },
+];
 
 export const Route = createFileRoute("/")({
   component: Index,
