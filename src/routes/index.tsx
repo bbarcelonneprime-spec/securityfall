@@ -649,6 +649,37 @@ function Index() {
             {/* Input bar (Gemini-style pill) */}
             <form onSubmit={sendAlexMessage} className="px-4 pb-6 pt-2 sm:px-8">
               <div className="mx-auto max-w-3xl">
+                {/* Mode chips */}
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAlexDeepResearch((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      alexDeepResearch
+                        ? "border-violet-400/50 bg-violet-600/30 text-white"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                    }`}
+                    title="Produit un rapport structuré et approfondi"
+                  >
+                    <Telescope className="h-3.5 w-3.5" />
+                    Recherche approfondie
+                  </button>
+                  {alexPersona !== "general" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/40 bg-indigo-600/20 px-3 py-1.5 text-xs text-indigo-200">
+                      <Gem className="h-3 w-3" />
+                      {ALEX_GEMS.find((g) => g.id === alexPersona)?.label}
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  ref={alexFileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.md,.markdown,.csv,.json,.log,.tsv,.html,.xml,.rtf,text/*,application/pdf"
+                  onChange={handleAlexFile}
+                  className="hidden"
+                />
+
                 <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#1a2138]/90 px-3 py-2 shadow-2xl shadow-black/40 backdrop-blur-xl transition focus-within:border-violet-400/40">
                   <button
                     type="button"
@@ -660,6 +691,16 @@ function Index() {
                     title={alexImageMode ? "Mode image activé" : "Activer le mode image"}
                   >
                     {alexImageMode ? <ImageIcon className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => alexFileInputRef.current?.click()}
+                    disabled={alexLoading}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+                    aria-label="Joindre un fichier"
+                    title="Analyser un fichier (PDF, texte…)"
+                  >
+                    <Paperclip className="h-4 w-4" />
                   </button>
                   <input
                     type="text"
