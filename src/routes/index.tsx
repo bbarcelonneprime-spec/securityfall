@@ -4,11 +4,23 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
+  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem,
 } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
-import { chatWithAlex, generateAlexImage } from "../lib/alex.functions";
+import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import { extractFileText } from "../lib/extract-file";
 import alexLogo from "@/assets/alex-logo.jpg";
+
+type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
+const ALEX_GEMS: GemDef[] = [
+  { id: "general", label: "Généraliste", icon: Sparkles, desc: "Assistant polyvalent" },
+  { id: "code", label: "Coach de code", icon: Code2, desc: "Aide à programmer" },
+  { id: "writer", label: "Relecteur", icon: PenLine, desc: "Améliore tes textes" },
+  { id: "travel", label: "Guide de voyage", icon: Plane, desc: "Itinéraires & conseils" },
+  { id: "chef", label: "Chef cuisinier", icon: ChefHat, desc: "Recettes & menus" },
+  { id: "tutor", label: "Tuteur", icon: GraduationCap, desc: "Explications pas à pas" },
+];
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -102,6 +114,7 @@ function Index() {
   const chatBotFn = useServerFn(chatWithBot);
   const alexFn = useServerFn(chatWithAlex);
   const alexImageFn = useServerFn(generateAlexImage);
+  const alexFileFn = useServerFn(analyzeAlexFile);
 
   // View toggle
   const [view, setView] = useState<"email" | "alex">("email");
@@ -127,8 +140,11 @@ function Index() {
   const [alexInput, setAlexInput] = useState("");
   const [alexLoading, setAlexLoading] = useState(false);
   const [alexImageMode, setAlexImageMode] = useState(false);
+  const [alexDeepResearch, setAlexDeepResearch] = useState(false);
+  const [alexPersona, setAlexPersona] = useState<string>("general");
   const [alexError, setAlexError] = useState<string | null>(null);
   const alexEndRef = useRef<HTMLDivElement>(null);
+  const alexFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loaded = loadAlexConversations();
@@ -211,7 +227,7 @@ function Index() {
         const historyForApi = newMessages
           .filter((m) => !m.imageUrl)
           .map((m) => ({ role: m.role, content: m.content }));
-        const res = await alexFn({ data: { messages: historyForApi } });
+        const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch } });
         updateConv(conv.id, (c) => ({
           ...c,
           messages: [...c.messages, { role: "assistant", content: res.content }],
@@ -219,6 +235,42 @@ function Index() {
       }
     } catch (err) {
       setAlexError(err instanceof Error ? err.message : "Erreur inconnue.");
+    } finally {
+      setAlexLoading(false);
+    }
+  };
+
+  const handleAlexFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file || alexLoading) return;
+    if (file.size > 15 * 1024 * 1024) {
+      setAlexError("Fichier trop volumineux (max 15 Mo).");
+      return;
+    }
+    const conv = ensureCurrentConv();
+    const instruction = alexInput.trim();
+    setAlexInput("");
+    setAlexError(null);
+    setAlexLoading(true);
+    updateConv(conv.id, (c) => ({
+      ...c,
+      messages: [
+        ...c.messages,
+        { role: "user", content: `📎 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse ce document."}` },
+      ],
+      title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+    }));
+    try {
+      const { fileName, content } = await extractFileText(file);
+      if (!content.trim()) throw new Error("Aucun texte extractible dans ce fichier.");
+      const res = await alexFileFn({ data: { fileName, content, instruction: instruction || undefined } });
+      updateConv(conv.id, (c) => ({
+        ...c,
+        messages: [...c.messages, { role: "assistant", content: res.content }],
+      }));
+    } catch (err) {
+      setAlexError(err instanceof Error ? err.message : "Erreur lors de l'analyse du fichier.");
     } finally {
       setAlexLoading(false);
     }
@@ -474,6 +526,35 @@ function Index() {
               </button>
             </nav>
 
+            {/* Gems — assistants spécialisés */}
+            <div className="px-3 pb-1">
+              <p className="flex items-center gap-1.5 px-2 pb-1.5 pt-2 text-xs font-medium text-slate-500">
+                <Gem className="h-3.5 w-3.5" /> Gems
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {ALEX_GEMS.map((g) => {
+                  const GIcon = g.icon;
+                  const active = alexPersona === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setAlexPersona(g.id)}
+                      title={g.desc}
+                      className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition ${
+                        active
+                          ? "bg-violet-600/30 text-white ring-1 ring-violet-400/50"
+                          : "text-slate-300 hover:bg-white/5"
+                      }`}
+                    >
+                      <GIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{g.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               <p className="px-3 pb-2 pt-3 text-xs font-medium text-slate-500">Recents</p>
               {alexConvs.length === 0 && (
@@ -568,6 +649,37 @@ function Index() {
             {/* Input bar (Gemini-style pill) */}
             <form onSubmit={sendAlexMessage} className="px-4 pb-6 pt-2 sm:px-8">
               <div className="mx-auto max-w-3xl">
+                {/* Mode chips */}
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAlexDeepResearch((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      alexDeepResearch
+                        ? "border-violet-400/50 bg-violet-600/30 text-white"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                    }`}
+                    title="Produit un rapport structuré et approfondi"
+                  >
+                    <Telescope className="h-3.5 w-3.5" />
+                    Recherche approfondie
+                  </button>
+                  {alexPersona !== "general" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/40 bg-indigo-600/20 px-3 py-1.5 text-xs text-indigo-200">
+                      <Gem className="h-3 w-3" />
+                      {ALEX_GEMS.find((g) => g.id === alexPersona)?.label}
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  ref={alexFileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.md,.markdown,.csv,.json,.log,.tsv,.html,.xml,.rtf,text/*,application/pdf"
+                  onChange={handleAlexFile}
+                  className="hidden"
+                />
+
                 <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#1a2138]/90 px-3 py-2 shadow-2xl shadow-black/40 backdrop-blur-xl transition focus-within:border-violet-400/40">
                   <button
                     type="button"
@@ -579,6 +691,16 @@ function Index() {
                     title={alexImageMode ? "Mode image activé" : "Activer le mode image"}
                   >
                     {alexImageMode ? <ImageIcon className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => alexFileInputRef.current?.click()}
+                    disabled={alexLoading}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+                    aria-label="Joindre un fichier"
+                    title="Analyser un fichier (PDF, texte…)"
+                  >
+                    <Paperclip className="h-4 w-4" />
                   </button>
                   <input
                     type="text"
