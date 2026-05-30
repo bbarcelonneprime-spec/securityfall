@@ -27,11 +27,11 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "Analyseur de sécurité e-mail" },
+      { title: "Alex IA — créé par Alex Graph" },
       {
         name: "description",
         content:
-          "Diagnostic pédagogique de la sécurité de votre adresse e-mail et conseils de prévention par un expert IA.",
+          "Alex IA par Alex Graph : un assistant IA généraliste et un analyseur de sécurité e-mail réunis en un seul endroit.",
       },
     ],
   }),
