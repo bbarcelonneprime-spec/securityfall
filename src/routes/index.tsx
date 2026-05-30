@@ -321,16 +321,16 @@ function Index() {
     }
   };
 
-  const toggleView = () => {
-    setView((v) => {
-      const next = v === "email" ? "alex" : "email";
-      if (next === "alex" && alexConvs.length === 0) {
-        // create first conv lazily
-        setTimeout(() => newAlexConversation(), 0);
-      }
-      return next;
-    });
+  const goToEmail = () => setView("email");
+
+  const goToAlex = () => {
+    if (alexConvs.length === 0) {
+      setTimeout(() => newAlexConversation(), 0);
+    }
+    setView("alex");
   };
+
+  const goHome = () => setView("home");
 
   return (
     <>
