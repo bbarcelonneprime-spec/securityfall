@@ -334,18 +334,82 @@ function Index() {
 
   return (
     <>
-      {/* Top-left toggle button */}
-      <button
-        type="button"
-        onClick={toggleView}
-        className="fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
-        aria-label="Basculer entre Analyseur et Alex IA"
-      >
-        <Sparkles className="h-4 w-4" />
-        {view === "email" ? "Alex IA" : "Analyseur e-mail"}
-      </button>
+      {/* Top-left home button (hidden on home view) */}
+      {view !== "home" && (
+        <button
+          type="button"
+          onClick={goHome}
+          className="fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
+          aria-label="Retour à l'accueil"
+        >
+          <Home className="h-4 w-4" />
+          Accueil
+        </button>
+      )}
 
-      {view === "email" ? (
+      {view === "home" ? (
+        /* ============ HOME / LANDING VIEW ============ */
+        <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0b0f1c] px-4 py-16 text-slate-100">
+          {/* Ambient aurora background */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-indigo-700/20 blur-[120px]" />
+            <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-violet-600/15 blur-[120px]" />
+            <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-blue-700/15 blur-[120px]" />
+          </div>
+
+          <div className="relative z-10 flex w-full max-w-2xl flex-col items-center text-center">
+            <img
+              src={alexGraphLogo}
+              alt="Alex Graph"
+              className="mb-8 h-28 w-28 rounded-3xl object-cover shadow-2xl shadow-indigo-900/40 ring-1 ring-white/10"
+            />
+            <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-5xl font-semibold tracking-tight text-transparent sm:text-6xl">
+              Alex IA
+            </h1>
+            <p className="mt-4 text-base text-slate-400 sm:text-lg">
+              créé par <span className="font-medium text-slate-200">Alex Graph</span>
+            </p>
+            <p className="mt-3 max-w-md text-sm text-slate-400">
+              Choisis ce que tu veux faire : discuter avec ton assistant IA généraliste ou analyser
+              la sécurité de ton adresse e-mail.
+            </p>
+
+            <div className="mt-10 grid w-full gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={goToAlex}
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
+                  <Sparkles className="h-6 w-6" />
+                </span>
+                <span className="text-lg font-semibold text-white">Alex IA</span>
+                <span className="text-xs text-slate-400">Assistant IA généraliste & images</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-violet-300">
+                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={goToEmail}
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-emerald-400/40 hover:bg-white/10"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+                  <ShieldCheck className="h-6 w-6" />
+                </span>
+                <span className="text-lg font-semibold text-white">Analyseur de sécurité e-mail</span>
+                <span className="text-xs text-slate-400">Diagnostic & conseils de prévention</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-emerald-300">
+                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </button>
+            </div>
+
+            <p className="mt-10 text-xs text-slate-500">© Alex Graph — Alex IA</p>
+          </div>
+        </main>
+      ) : view === "email" ? (
         <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
           <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
             <header className="mb-10 text-center">
