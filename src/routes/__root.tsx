@@ -72,18 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "securityfall" },
+      { title: "alex ia" },
       { name: "description", content: "Secure Email Guardian analyzes email addresses to provide security diagnostics and prevention advice." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "securityfall" },
+      { property: "og:title", content: "alex ia" },
       { property: "og:description", content: "Secure Email Guardian analyzes email addresses to provide security diagnostics and prevention advice." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "securityfall" },
+      { name: "twitter:title", content: "alex ia" },
       { name: "twitter:description", content: "Secure Email Guardian analyzes email addresses to provide security diagnostics and prevention advice." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/815113f2-e7fb-4580-9ad8-0a831f9efa87" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/815113f2-e7fb-4580-9ad8-0a831f9efa87" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/CusaqxEXL6RLV4IN2Wiv3mQ4n5s1/social-images/social-1780160561982-Design_sans_titre_(2).webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/CusaqxEXL6RLV4IN2Wiv3mQ4n5s1/social-images/social-1780160561982-Design_sans_titre_(2).webp" },
     ],
     links: [
       {
