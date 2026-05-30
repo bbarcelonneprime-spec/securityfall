@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
-  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home,
+  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
 } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
@@ -21,6 +21,7 @@ const ALEX_GEMS: GemDef[] = [
   { id: "travel", label: "Guide de voyage", icon: Plane, desc: "Itinéraires & conseils" },
   { id: "chef", label: "Chef cuisinier", icon: ChefHat, desc: "Recettes & menus" },
   { id: "tutor", label: "Tuteur", icon: GraduationCap, desc: "Explications pas à pas" },
+  { id: "agent", label: "Agent autonome", icon: BrainCircuit, desc: "IA agentique (ReAct, outils, garde-fous)" },
 ];
 
 export const Route = createFileRoute("/")({
