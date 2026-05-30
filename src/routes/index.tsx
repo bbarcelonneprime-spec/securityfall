@@ -118,7 +118,7 @@ function Index() {
   const alexFileFn = useServerFn(analyzeAlexFile);
 
   // View toggle
-  const [view, setView] = useState<"email" | "alex">("email");
+  const [view, setView] = useState<"home" | "email" | "alex">("home");
 
   // Email analyzer state
   const [email, setEmail] = useState("");
