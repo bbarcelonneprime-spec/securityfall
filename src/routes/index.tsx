@@ -4,13 +4,14 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
-  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem,
+  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home,
 } from "lucide-react";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
 import { extractFileText } from "../lib/extract-file";
 import alexLogo from "@/assets/alex-logo.jpg";
+import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
 const ALEX_GEMS: GemDef[] = [
