@@ -4,14 +4,18 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
-  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
+  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit, LogOut,
 } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
 import { extractFileText } from "../lib/extract-file";
+import { supabase } from "@/integrations/supabase/client";
+import LoginScreen from "@/components/LoginScreen";
 import alexLogo from "@/assets/alex-logo.jpg";
 import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
+
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
 const ALEX_GEMS: GemDef[] = [
@@ -118,8 +122,28 @@ function Index() {
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
 
+  // Auth gate
+  const [session, setSession] = useState<Session | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // View toggle
   const [view, setView] = useState<"home" | "email" | "alex">("home");
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setView("home");
+  };
 
   // Email analyzer state
   const [email, setEmail] = useState("");
@@ -333,8 +357,32 @@ function Index() {
 
   const goHome = () => setView("home");
 
+  // Connexion obligatoire pour accéder au site
+  if (!authChecked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0b0f1c] text-slate-300">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </main>
+    );
+  }
+  if (!session) {
+    return <LoginScreen />;
+  }
+
   return (
     <>
+      {/* Sign-out button (top-right) */}
+      <button
+        type="button"
+        onClick={signOut}
+        className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-2 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-white/20"
+        aria-label="Se déconnecter"
+        title="Se déconnecter"
+      >
+        <LogOut className="h-4 w-4" />
+        <span className="hidden sm:inline">Déconnexion</span>
+      </button>
+
       {/* Top-left home button (hidden on home view) */}
       {view !== "home" && (
         <button
