@@ -122,8 +122,28 @@ function Index() {
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
 
+  // Auth gate
+  const [session, setSession] = useState<Session | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // View toggle
   const [view, setView] = useState<"home" | "email" | "alex">("home");
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setView("home");
+  };
 
   // Email analyzer state
   const [email, setEmail] = useState("");
