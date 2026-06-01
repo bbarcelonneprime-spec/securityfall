@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
