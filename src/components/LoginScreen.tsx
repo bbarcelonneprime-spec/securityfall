@@ -45,12 +45,7 @@ export default function LoginScreen() {
     }
   };
 
-  const unsupportedProvider = (name: string) => {
-    setError(null);
-    setInfo(
-      `La connexion avec ${name} arrive bientôt. Pour l'instant, connecte-toi avec Google ou par e-mail.`,
-    );
-  };
+
 
   const submitEmail = async (e: FormEvent) => {
     e.preventDefault();
