@@ -12,7 +12,7 @@ export const VOICE_OPTIONS = [
   { id: "Xb7hH8MSUJpSbSDYk0k2", label: "Alice (naturelle)" },
 ] as const;
 
-const VALID_VOICE_IDS = new Set(VOICE_OPTIONS.map((v) => v.id));
+const VALID_VOICE_IDS = new Set<string>(VOICE_OPTIONS.map((v) => v.id));
 
 export const synthesizeVoice = createServerFn({ method: "POST" })
   .inputValidator((data: { text: string; voiceId?: string }) => {
