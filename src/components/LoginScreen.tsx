@@ -140,25 +140,16 @@ export default function LoginScreen() {
               {providerLoading === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon />}
               Continuer avec Google
             </button>
-            <button
-              type="button"
-              onClick={() => unsupportedProvider("Discord")}
-              disabled={providerLoading !== null || loading}
-              className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-[#5865F2]/15 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-[#5865F2]/25 disabled:opacity-60"
-            >
-              <DiscordIcon />
-              Continuer avec Discord
-            </button>
-            <button
-              type="button"
-              onClick={() => unsupportedProvider("X")}
-              disabled={providerLoading !== null || loading}
-              className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-white/15 disabled:opacity-60"
-            >
-              <XIcon />
-              Continuer avec X
-            </button>
+            <p className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-slate-400">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
+              <span>
+                La connexion via <span className="font-medium text-slate-300">Discord</span> et{" "}
+                <span className="font-medium text-slate-300">X</span> n'est pas disponible pour le moment.
+                Utilise Google ou ton adresse e-mail ci-dessous.
+              </span>
+            </p>
           </div>
+
 
           <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
             <span className="h-px flex-1 bg-white/10" />
