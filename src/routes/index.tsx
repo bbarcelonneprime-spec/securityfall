@@ -4,15 +4,18 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
-  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit, LogOut,
+  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
+  AudioLines, Volume2, Play,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import { synthesizeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
 import { extractFileText } from "../lib/extract-file";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
+import UserMenu from "@/components/UserMenu";
 import alexLogo from "@/assets/alex-logo.jpg";
 import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
 
@@ -138,11 +141,35 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setView("home");
+  };
+
+  // Voix IA (ElevenLabs) state
+  const voiceFn = useServerFn(synthesizeVoice);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceId, setVoiceId] = useState<string>(VOICE_OPTIONS[0].id);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceAudio, setVoiceAudio] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  const handleSynthesize = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!voiceText.trim() || voiceLoading) return;
+    setVoiceError(null);
+    setVoiceAudio(null);
+    setVoiceLoading(true);
+    try {
+      const res = await voiceFn({ data: { text: voiceText.trim(), voiceId } });
+      setVoiceAudio(res.audio);
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : "Erreur de génération vocale.");
+    } finally {
+      setVoiceLoading(false);
+    }
   };
 
   // Email analyzer state
@@ -357,6 +384,8 @@ function Index() {
 
   const goHome = () => setView("home");
 
+  const goToVoice = () => setView("voice");
+
   // Connexion obligatoire pour accéder au site
   if (!authChecked) {
     return (
@@ -371,17 +400,8 @@ function Index() {
 
   return (
     <>
-      {/* Sign-out button (top-right) */}
-      <button
-        type="button"
-        onClick={signOut}
-        className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-2 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-white/20"
-        aria-label="Se déconnecter"
-        title="Se déconnecter"
-      >
-        <LogOut className="h-4 w-4" />
-        <span className="hidden sm:inline">Déconnexion</span>
-      </button>
+      {/* User profile menu (top-right) */}
+      <UserMenu session={session} onSignOut={signOut} />
 
       {/* Top-left home button (hidden on home view) */}
       {view !== "home" && (
@@ -406,7 +426,7 @@ function Index() {
             <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-blue-700/15 blur-[120px]" />
           </div>
 
-          <div className="relative z-10 flex w-full max-w-2xl flex-col items-center text-center">
+          <div className="relative z-10 flex w-full max-w-3xl flex-col items-center text-center">
             <img
               src={alexGraphLogo}
               alt="Alex Graph"
@@ -423,7 +443,7 @@ function Index() {
               la sécurité de ton adresse e-mail.
             </p>
 
-            <div className="mt-10 grid w-full gap-4 sm:grid-cols-2">
+            <div className="mt-10 grid w-full gap-4 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={goToAlex}
