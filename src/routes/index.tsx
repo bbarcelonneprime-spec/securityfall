@@ -443,7 +443,7 @@ function Index() {
               la sécurité de ton adresse e-mail.
             </p>
 
-            <div className="mt-10 grid w-full gap-4 sm:grid-cols-2">
+            <div className="mt-10 grid w-full gap-4 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={goToAlex}
