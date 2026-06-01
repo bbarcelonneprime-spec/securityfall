@@ -141,11 +141,35 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setView("home");
+  };
+
+  // Voix IA (ElevenLabs) state
+  const voiceFn = useServerFn(synthesizeVoice);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceId, setVoiceId] = useState<string>(VOICE_OPTIONS[0].id);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceAudio, setVoiceAudio] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  const handleSynthesize = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!voiceText.trim() || voiceLoading) return;
+    setVoiceError(null);
+    setVoiceAudio(null);
+    setVoiceLoading(true);
+    try {
+      const res = await voiceFn({ data: { text: voiceText.trim(), voiceId } });
+      setVoiceAudio(res.audio);
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : "Erreur de génération vocale.");
+    } finally {
+      setVoiceLoading(false);
+    }
   };
 
   // Email analyzer state
