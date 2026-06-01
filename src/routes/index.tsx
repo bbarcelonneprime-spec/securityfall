@@ -384,6 +384,8 @@ function Index() {
 
   const goHome = () => setView("home");
 
+  const goToVoice = () => setView("voice");
+
   // Connexion obligatoire pour accéder au site
   if (!authChecked) {
     return (
