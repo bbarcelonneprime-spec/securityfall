@@ -426,7 +426,7 @@ function Index() {
             <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-blue-700/15 blur-[120px]" />
           </div>
 
-          <div className="relative z-10 flex w-full max-w-2xl flex-col items-center text-center">
+          <div className="relative z-10 flex w-full max-w-3xl flex-col items-center text-center">
             <img
               src={alexGraphLogo}
               alt="Alex Graph"
