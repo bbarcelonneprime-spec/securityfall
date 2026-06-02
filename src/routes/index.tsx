@@ -173,6 +173,10 @@ function Index() {
     setVoiceLoading(true);
     try {
       const res = await voiceFn({ data: { text: voiceText.trim(), voiceId } });
+      if (res.error) {
+        setVoiceError(res.error);
+        return;
+      }
       setVoiceAudio(res.audio);
     } catch (err) {
       setVoiceError(err instanceof Error ? err.message : "Erreur de génération vocale.");
@@ -205,6 +209,10 @@ function Index() {
         try {
           const audio = await blobToBase64(blob);
           const res = await transcribeFn({ data: { audio, mimeType: blob.type } });
+          if (res.error) {
+            setVoiceError(res.error);
+            return;
+          }
           setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
         } catch (err) {
           setVoiceError(err instanceof Error ? err.message : "Erreur de transcription.");
