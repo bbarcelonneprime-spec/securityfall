@@ -5,13 +5,13 @@ import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
-  AudioLines, Volume2, Play,
+  AudioLines, Volume2, Play, MicOff, Square, FileText, Copy,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
-import { synthesizeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
+import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
 import { extractFileText } from "../lib/extract-file";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
@@ -150,11 +150,20 @@ function Index() {
 
   // Voix IA (ElevenLabs) state
   const voiceFn = useServerFn(synthesizeVoice);
+  const transcribeFn = useServerFn(transcribeVoice);
+  const [voiceMode, setVoiceMode] = useState<"tts" | "stt">("tts");
   const [voiceText, setVoiceText] = useState("");
   const [voiceId, setVoiceId] = useState<string>(VOICE_OPTIONS[0].id);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceAudio, setVoiceAudio] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  // Speech-to-text state
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const handleSynthesize = async (e: FormEvent) => {
     e.preventDefault();
@@ -171,6 +180,51 @@ function Index() {
       setVoiceLoading(false);
     }
   };
+
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const startRecording = async () => {
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mr.ondataavailable = (ev) => {
+        if (ev.data.size > 0) audioChunksRef.current.push(ev.data);
+      };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || "audio/webm" });
+        setTranscribing(true);
+        try {
+          const audio = await blobToBase64(blob);
+          const res = await transcribeFn({ data: { audio, mimeType: blob.type } });
+          setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
+        } catch (err) {
+          setVoiceError(err instanceof Error ? err.message : "Erreur de transcription.");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch {
+      setVoiceError("Impossible d'accéder au micro. Autorise l'accès au microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
 
   // Email analyzer state
   const [email, setEmail] = useState("");
@@ -473,6 +527,21 @@ function Index() {
                   Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={goToVoice}
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
+                  <AudioLines className="h-6 w-6" />
+                </span>
+                <span className="text-lg font-semibold text-white">Voix IA</span>
+                <span className="text-xs text-slate-400">Texte → voix & voix → texte</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-fuchsia-300">
+                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </button>
             </div>
 
             <p className="mt-10 text-xs text-slate-500">© Alex Graph — Alex IA</p>
@@ -620,6 +689,170 @@ function Index() {
               </form>
             </div>
           )}
+        </main>
+      ) : view === "voice" ? (
+        /* ============ VOIX IA VIEW (ElevenLabs) ============ */
+        <main className="relative min-h-screen overflow-hidden bg-[#0b0f1c] px-4 py-16 text-slate-100">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-fuchsia-700/20 blur-[120px]" />
+            <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-pink-600/15 blur-[120px]" />
+          </div>
+
+          <div className="relative z-10 mx-auto w-full max-w-2xl">
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
+                <AudioLines className="h-7 w-7" />
+              </div>
+              <h1 className="bg-gradient-to-r from-fuchsia-300 via-white to-pink-300 bg-clip-text text-4xl font-semibold tracking-tight text-transparent">
+                Voix IA
+              </h1>
+              <p className="mt-3 text-sm text-slate-400">
+                Convertis du texte en voix naturelle ou transcris ta voix en texte.
+              </p>
+            </header>
+
+            {/* Mode switch */}
+            <div className="mx-auto mb-8 flex max-w-sm items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => setVoiceMode("tts")}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                  voiceMode === "tts" ? "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow" : "text-slate-300 hover:text-white"
+                }`}
+              >
+                <Volume2 className="h-4 w-4" /> Texte → Voix
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceMode("stt")}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                  voiceMode === "stt" ? "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow" : "text-slate-300 hover:text-white"
+                }`}
+              >
+                <Mic className="h-4 w-4" /> Voix → Texte
+              </button>
+            </div>
+
+            {voiceError && (
+              <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/50 p-4 text-sm text-red-300">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <p>{voiceError}</p>
+              </div>
+            )}
+
+            {voiceMode === "tts" ? (
+              /* Text to speech */
+              <form onSubmit={handleSynthesize} className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+                <label htmlFor="voiceText" className="mb-2 block text-sm font-medium text-slate-200">
+                  Ton texte
+                </label>
+                <textarea
+                  id="voiceText"
+                  value={voiceText}
+                  onChange={(e) => setVoiceText(e.target.value)}
+                  rows={5}
+                  maxLength={5000}
+                  placeholder="Écris le texte à transformer en voix…"
+                  className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-fuchsia-400/40"
+                />
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <select
+                    value={voiceId}
+                    onChange={(e) => setVoiceId(e.target.value)}
+                    className="flex-1 rounded-xl border border-white/10 bg-[#11162a]/80 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-fuchsia-400/40"
+                  >
+                    {VOICE_OPTIONS.map((v) => (
+                      <option key={v.id} value={v.id} className="bg-[#11162a]">
+                        {v.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={voiceLoading || !voiceText.trim()}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {voiceLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>) : (<><Play className="h-4 w-4" /> Générer la voix</>)}
+                  </button>
+                </div>
+
+                {voiceAudio && (
+                  <div className="mt-5 rounded-xl border border-white/10 bg-[#11162a]/60 p-4">
+                    <audio controls autoPlay src={voiceAudio} className="w-full">
+                      Ton navigateur ne supporte pas l'audio.
+                    </audio>
+                    <a
+                      href={voiceAudio}
+                      download="voix-ia.mp3"
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-fuchsia-300 hover:text-fuchsia-200"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Télécharger le MP3
+                    </a>
+                  </div>
+                )}
+              </form>
+            ) : (
+              /* Speech to text */
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+                <div className="flex flex-col items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={recording ? stopRecording : startRecording}
+                    disabled={transcribing}
+                    className={`flex h-20 w-20 items-center justify-center rounded-full text-white shadow-lg transition hover:scale-105 disabled:opacity-50 ${
+                      recording ? "bg-red-600 animate-pulse" : "bg-gradient-to-br from-fuchsia-500 to-pink-600"
+                    }`}
+                    aria-label={recording ? "Arrêter l'enregistrement" : "Démarrer l'enregistrement"}
+                  >
+                    {recording ? <Square className="h-7 w-7" /> : transcribing ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-8 w-8" />}
+                  </button>
+                  <p className="text-sm text-slate-400">
+                    {recording
+                      ? "Enregistrement… clique pour arrêter."
+                      : transcribing
+                        ? "Transcription en cours…"
+                        : "Clique sur le micro et parle."}
+                  </p>
+                </div>
+
+                <div className="mt-6">
+                  <div className="mb-2 flex items-center justify-between">
+                    <label htmlFor="transcript" className="flex items-center gap-1.5 text-sm font-medium text-slate-200">
+                      <FileText className="h-4 w-4" /> Transcription
+                    </label>
+                    {transcript && (
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(transcript)}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-fuchsia-300 hover:text-fuchsia-200"
+                      >
+                        <Copy className="h-3.5 w-3.5" /> Copier
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    id="transcript"
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    rows={6}
+                    placeholder="Le texte transcrit apparaîtra ici…"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-fuchsia-400/40"
+                  />
+                  {transcript && (
+                    <button
+                      type="button"
+                      onClick={() => setTranscript("")}
+                      className="mt-3 text-xs font-medium text-slate-400 hover:text-slate-200"
+                    >
+                      Effacer
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-10 text-center text-xs text-slate-500">Propulsé par ElevenLabs — © Alex Graph</p>
+          </div>
         </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */

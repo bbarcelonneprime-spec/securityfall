@@ -62,3 +62,53 @@ export const synthesizeVoice = createServerFn({ method: "POST" })
     const base64 = Buffer.from(buffer).toString("base64");
     return { audio: `data:audio/mpeg;base64,${base64}` };
   });
+
+// Speech-to-Text via ElevenLabs Scribe.
+export const transcribeVoice = createServerFn({ method: "POST" })
+  .inputValidator((data: { audio: string; mimeType?: string }) => {
+    if (!data?.audio || typeof data.audio !== "string") {
+      throw new Error("Audio invalide.");
+    }
+    // Strip optional data URI prefix.
+    const base64 = data.audio.includes(",") ? data.audio.split(",").pop()! : data.audio;
+    if (base64.length > 30_000_000) throw new Error("Audio trop volumineux (25 Mo max).");
+    const mimeType =
+      typeof data.mimeType === "string" && /^audio\//.test(data.mimeType)
+        ? data.mimeType
+        : "audio/webm";
+    return { base64, mimeType };
+  })
+  .handler(async ({ data }) => {
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) throw new Error("ELEVENLABS_API_KEY manquante.");
+
+    const bytes = Buffer.from(data.base64, "base64");
+    const ext = data.mimeType.includes("mp4")
+      ? "mp4"
+      : data.mimeType.includes("mpeg")
+        ? "mp3"
+        : data.mimeType.includes("wav")
+          ? "wav"
+          : "webm";
+
+    const form = new FormData();
+    form.append("file", new Blob([bytes], { type: data.mimeType }), `audio.${ext}`);
+    form.append("model_id", "scribe_v1");
+    form.append("tag_audio_events", "false");
+
+    const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: { "xi-api-key": apiKey },
+      body: form,
+    });
+
+    if (res.status === 401) throw new Error("Clé ElevenLabs invalide.");
+    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
+    if (!res.ok) {
+      console.error("ElevenLabs STT error:", res.status, await res.text());
+      throw new Error("Erreur de transcription.");
+    }
+
+    const json = (await res.json()) as { text?: string; language_code?: string };
+    return { text: json.text?.trim() ?? "", language: json.language_code ?? null };
+  });
