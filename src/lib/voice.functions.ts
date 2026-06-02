@@ -14,6 +14,9 @@ export const VOICE_OPTIONS = [
 
 const VALID_VOICE_IDS = new Set<string>(VOICE_OPTIONS.map((v) => v.id));
 
+const ELEVENLABS_KEY_HELP =
+  "Clé ElevenLabs invalide : colle uniquement ta clé API commençant par sk_ dans le secret ELEVENLABS_API_KEY.";
+
 export const synthesizeVoice = createServerFn({ method: "POST" })
   .inputValidator((data: { text: string; voiceId?: string }) => {
     if (!data?.text || typeof data.text !== "string" || !data.text.trim()) {
@@ -28,7 +31,7 @@ export const synthesizeVoice = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) throw new Error("ELEVENLABS_API_KEY manquante.");
+    if (!apiKey) return { audio: null, error: "ELEVENLABS_API_KEY manquante." };
 
     const res = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${data.voiceId}?output_format=mp3_44100_128`,
@@ -51,16 +54,16 @@ export const synthesizeVoice = createServerFn({ method: "POST" })
       },
     );
 
-    if (res.status === 401) throw new Error("Clé ElevenLabs invalide.");
-    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
+    if (res.status === 401) return { audio: null, error: ELEVENLABS_KEY_HELP };
+    if (res.status === 429) return { audio: null, error: "Trop de requêtes. Réessaie dans un instant." };
     if (!res.ok) {
       console.error("ElevenLabs TTS error:", res.status, await res.text());
-      throw new Error("Erreur de génération vocale.");
+      return { audio: null, error: "Erreur de génération vocale." };
     }
 
     const buffer = await res.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
-    return { audio: `data:audio/mpeg;base64,${base64}` };
+    return { audio: `data:audio/mpeg;base64,${base64}`, error: null };
   });
 
 // Speech-to-Text via ElevenLabs Scribe.
@@ -80,7 +83,7 @@ export const transcribeVoice = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) throw new Error("ELEVENLABS_API_KEY manquante.");
+    if (!apiKey) return { text: "", language: null, error: "ELEVENLABS_API_KEY manquante." };
 
     const bytes = Buffer.from(data.base64, "base64");
     const ext = data.mimeType.includes("mp4")
@@ -102,13 +105,13 @@ export const transcribeVoice = createServerFn({ method: "POST" })
       body: form,
     });
 
-    if (res.status === 401) throw new Error("Clé ElevenLabs invalide.");
-    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
+    if (res.status === 401) return { text: "", language: null, error: ELEVENLABS_KEY_HELP };
+    if (res.status === 429) return { text: "", language: null, error: "Trop de requêtes. Réessaie dans un instant." };
     if (!res.ok) {
       console.error("ElevenLabs STT error:", res.status, await res.text());
-      throw new Error("Erreur de transcription.");
+      return { text: "", language: null, error: "Erreur de transcription." };
     }
 
     const json = (await res.json()) as { text?: string; language_code?: string };
-    return { text: json.text?.trim() ?? "", language: json.language_code ?? null };
+    return { text: json.text?.trim() ?? "", language: json.language_code ?? null, error: null };
   });
