@@ -527,6 +527,21 @@ function Index() {
                   Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={goToVoice}
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
+                  <AudioLines className="h-6 w-6" />
+                </span>
+                <span className="text-lg font-semibold text-white">Voix IA</span>
+                <span className="text-xs text-slate-400">Texte → voix & voix → texte</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-fuchsia-300">
+                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </button>
             </div>
 
             <p className="mt-10 text-xs text-slate-500">© Alex Graph — Alex IA</p>
