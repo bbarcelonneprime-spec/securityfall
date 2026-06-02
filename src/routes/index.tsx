@@ -150,11 +150,20 @@ function Index() {
 
   // Voix IA (ElevenLabs) state
   const voiceFn = useServerFn(synthesizeVoice);
+  const transcribeFn = useServerFn(transcribeVoice);
+  const [voiceMode, setVoiceMode] = useState<"tts" | "stt">("tts");
   const [voiceText, setVoiceText] = useState("");
   const [voiceId, setVoiceId] = useState<string>(VOICE_OPTIONS[0].id);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceAudio, setVoiceAudio] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  // Speech-to-text state
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const handleSynthesize = async (e: FormEvent) => {
     e.preventDefault();
@@ -171,6 +180,51 @@ function Index() {
       setVoiceLoading(false);
     }
   };
+
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const startRecording = async () => {
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mr.ondataavailable = (ev) => {
+        if (ev.data.size > 0) audioChunksRef.current.push(ev.data);
+      };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || "audio/webm" });
+        setTranscribing(true);
+        try {
+          const audio = await blobToBase64(blob);
+          const res = await transcribeFn({ data: { audio, mimeType: blob.type } });
+          setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
+        } catch (err) {
+          setVoiceError(err instanceof Error ? err.message : "Erreur de transcription.");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch {
+      setVoiceError("Impossible d'accéder au micro. Autorise l'accès au microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
 
   // Email analyzer state
   const [email, setEmail] = useState("");
