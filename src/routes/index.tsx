@@ -356,6 +356,46 @@ function Index() {
     }
   };
 
+  // Lance une conversation Alex IA directement depuis l'accueil (barre de prompt centrale)
+  const runAlexPrompt = async (text: string) => {
+    const promptText = text.trim();
+    if (!promptText || alexLoading) return;
+    setView("alex");
+    setAlexError(null);
+    const conv = ensureCurrentConv();
+    const userMsg: AlexMsg = { role: "user", content: promptText };
+    const newMessages = [...conv.messages, userMsg];
+    updateConv(conv.id, (c) => ({
+      ...c,
+      messages: newMessages,
+      title: c.messages.filter((m) => m.role === "user").length === 0 ? promptText.slice(0, 40) : c.title,
+    }));
+    setAlexLoading(true);
+    try {
+      const historyForApi = newMessages
+        .filter((m) => !m.imageUrl)
+        .map((m) => ({ role: m.role, content: m.content }));
+      const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch } });
+      updateConv(conv.id, (c) => ({
+        ...c,
+        messages: [...c.messages, { role: "assistant", content: res.content }],
+      }));
+    } catch (err) {
+      setAlexError(err instanceof Error ? err.message : "Erreur inconnue.");
+    } finally {
+      setAlexLoading(false);
+    }
+  };
+
+  const submitHeroPrompt = (e: FormEvent) => {
+    e.preventDefault();
+    const text = heroPrompt;
+    setHeroPrompt("");
+    void runAlexPrompt(text);
+  };
+
+
+
   const handleAlexFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (e.target) e.target.value = "";
