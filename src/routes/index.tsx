@@ -528,79 +528,167 @@ function Index() {
       <div key={view} className="view-transition">
       {view === "home" ? (
         /* ============ HOME / LANDING VIEW ============ */
-        <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0b0f1c] px-4 py-16 text-slate-100">
-          {/* Ambient aurora background */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-indigo-700/20 blur-[120px]" />
-            <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-violet-600/15 blur-[120px]" />
-            <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-blue-700/15 blur-[120px]" />
-          </div>
+        <main className="relative flex min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+          {/* ===== Sidebar (style Lovable) ===== */}
+          <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16] px-3 py-4 md:flex">
+            <div className="mb-6 flex items-center gap-3 px-2">
+              <img src={alexGraphLogo} alt="Alex Graph" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
+              <div className="leading-tight">
+                <p className="text-sm font-semibold text-white">Alex IA</p>
+                <p className="text-[11px] text-slate-500">par Alex Graph</p>
+              </div>
+            </div>
 
-          <div className="relative z-10 flex w-full max-w-3xl flex-col items-center text-center">
-            <img
-              src={alexGraphLogo}
-              alt="Alex Graph"
-              className="mb-8 h-28 w-28 rounded-3xl object-cover shadow-2xl shadow-indigo-900/40 ring-1 ring-white/10"
-            />
-            <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-5xl font-semibold tracking-tight text-transparent sm:text-6xl">
-              Alex IA
-            </h1>
-            <p className="mt-4 text-base text-slate-400 sm:text-lg">
-              créé par <span className="font-medium text-slate-200">Alex Graph</span>
-            </p>
-            <p className="mt-3 max-w-md text-sm text-slate-400">
-              Choisis ce que tu veux faire : discuter avec ton assistant IA généraliste ou analyser
-              la sécurité de ton adresse e-mail.
-            </p>
-
-            <div className="mt-10 grid w-full gap-4 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={goToAlex}
-                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
-                  <Sparkles className="h-6 w-6" />
-                </span>
-                <span className="text-lg font-semibold text-white">Alex IA</span>
-                <span className="text-xs text-slate-400">Assistant IA généraliste & images</span>
-                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-violet-300">
-                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </span>
+            <nav className="flex flex-col gap-1">
+              <button type="button" className="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-white">
+                <Home className="h-4 w-4" /> Accueil
               </button>
-
-              <button
-                type="button"
-                onClick={goToEmail}
-                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-emerald-400/40 hover:bg-white/10"
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
-                  <ShieldCheck className="h-6 w-6" />
-                </span>
-                <span className="text-lg font-semibold text-white">Analyseur de sécurité e-mail</span>
-                <span className="text-xs text-slate-400">Diagnostic & conseils de prévention</span>
-                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-emerald-300">
-                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </span>
+              <button type="button" onClick={goToAlex} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Sparkles className="h-4 w-4" /> Alex IA
               </button>
+              <button type="button" onClick={goToVoice} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <AudioLines className="h-4 w-4" /> Voix IA
+              </button>
+              <button type="button" onClick={goToEmail} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <ShieldCheck className="h-4 w-4" /> Sécurité e-mail
+              </button>
+            </nav>
 
+            <div className="my-4 h-px bg-white/5" />
+
+            <p className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">Conversations</p>
+            <div className="flex flex-col gap-1 overflow-y-auto">
+              <button type="button" onClick={goToAlex} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Plus className="h-4 w-4" /> Nouvelle conversation
+              </button>
+              {alexConvs.slice(0, 6).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => { setAlexCurrentId(c.id); goToAlex(); }}
+                  className="flex items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-left text-sm text-slate-400 transition hover:bg-white/5 hover:text-white"
+                >
+                  <MessagesSquare className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{c.title}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-auto px-2 pt-4 text-[11px] text-slate-600">© Alex Graph — Alex IA</div>
+          </aside>
+
+          {/* ===== Main hero area ===== */}
+          <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden">
+            {/* Aurora background : bleu en haut → magenta en bas */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(130% 95% at 50% 118%, rgba(255,45,130,0.85) 0%, rgba(176,38,255,0.55) 24%, rgba(70,90,235,0.45) 46%, rgba(10,10,20,0) 72%)",
+                }}
+              />
+              <div
+                className="absolute inset-x-0 top-0 h-1/2"
+                style={{ background: "linear-gradient(180deg, rgba(10,10,20,1) 0%, rgba(10,10,20,0) 100%)" }}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-16">
+              {/* Pill banner */}
               <button
                 type="button"
                 onClick={goToVoice}
-                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
+                className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-slate-200 backdrop-blur-xl transition hover:bg-black/40"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
-                  <AudioLines className="h-6 w-6" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600">
+                  <AudioLines className="h-3.5 w-3.5 text-white" />
                 </span>
-                <span className="text-lg font-semibold text-white">Voix IA</span>
-                <span className="text-xs text-slate-400">Texte → voix & voix → texte</span>
-                <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-fuchsia-300">
-                  Ouvrir <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </span>
+                Découvre la Voix IA
+                <ArrowRight className="h-4 w-4 text-slate-400" />
               </button>
-            </div>
 
-            <p className="mt-10 text-xs text-slate-500">© Alex Graph — Alex IA</p>
+              <h1 className="text-center text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">
+                Quoi de neuf, {userName} ?
+              </h1>
+
+              {/* Prompt box central */}
+              <form onSubmit={submitHeroPrompt} className="mt-8 w-full max-w-2xl">
+                <div className="rounded-3xl border border-white/10 bg-black/40 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl transition focus-within:border-violet-400/40">
+                  <textarea
+                    value={heroPrompt}
+                    onChange={(e) => setHeroPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        submitHeroPrompt(e as unknown as FormEvent);
+                      }
+                    }}
+                    rows={2}
+                    maxLength={4000}
+                    placeholder="Demande quelque chose à Alex IA…"
+                    className="w-full resize-none bg-transparent px-2 py-1 text-base text-slate-100 placeholder-slate-500 outline-none"
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={goToAlex} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Plus d'options">
+                        <Plus className="h-5 w-5" />
+                      </button>
+                      <button type="button" onClick={goToVoice} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Voix">
+                        <Mic className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!heroPrompt.trim() || alexLoading}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Envoyer"
+                    >
+                      {alexLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Tool cards */}
+              <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={goToAlex}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
+                    <Sparkles className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Alex IA</span>
+                  <span className="text-xs text-slate-400">Assistant généraliste & images</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToVoice}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
+                    <AudioLines className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Voix IA</span>
+                  <span className="text-xs text-slate-400">Texte → voix & voix → texte</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToEmail}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-emerald-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+                    <ShieldCheck className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Sécurité e-mail</span>
+                  <span className="text-xs text-slate-400">Diagnostic & prévention</span>
+                </button>
+              </div>
+            </div>
           </div>
         </main>
       ) : view === "email" ? (
