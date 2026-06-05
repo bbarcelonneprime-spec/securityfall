@@ -478,6 +478,7 @@ function Index() {
         </button>
       )}
 
+      <div key={view} className="view-transition">
       {view === "home" ? (
         /* ============ HOME / LANDING VIEW ============ */
         <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0b0f1c] px-4 py-16 text-slate-100">
@@ -1108,6 +1109,7 @@ function Index() {
           </section>
         </main>
       )}
+      </div>
     </>
   );
 }
