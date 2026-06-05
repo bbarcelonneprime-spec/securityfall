@@ -253,6 +253,7 @@ function Index() {
   const [alexConvs, setAlexConvs] = useState<AlexConversation[]>([]);
   const [alexCurrentId, setAlexCurrentId] = useState<string | null>(null);
   const [alexInput, setAlexInput] = useState("");
+  const [heroPrompt, setHeroPrompt] = useState("");
   const [alexLoading, setAlexLoading] = useState(false);
   const [alexImageMode, setAlexImageMode] = useState(false);
   const [alexDeepResearch, setAlexDeepResearch] = useState(false);
