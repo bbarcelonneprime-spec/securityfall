@@ -501,6 +501,12 @@ function Index() {
     return <LoginScreen />;
   }
 
+  const userName =
+    (session.user.user_metadata?.full_name as string | undefined) ||
+    (session.user.user_metadata?.name as string | undefined) ||
+    session.user.email?.split("@")[0] ||
+    "ami";
+
   return (
     <>
       {/* User profile menu (top-right) */}
