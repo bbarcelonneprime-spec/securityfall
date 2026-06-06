@@ -746,6 +746,16 @@ function Index() {
                   <span className="text-xs text-slate-400">Diagnostic & prévention</span>
                 </button>
               </div>
+
+              {/* Theme customizer trigger */}
+              <button
+                type="button"
+                onClick={() => setThemeOpen(true)}
+                className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
+              >
+                <Palette className="h-4 w-4" />
+                Personnaliser le thème
+              </button>
             </div>
           </div>
         </main>
