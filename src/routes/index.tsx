@@ -1164,10 +1164,6 @@ function Index() {
                 <span className="text-lg font-medium text-slate-200">Alex</span>
                 <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs text-slate-400">2.5 Flash</span>
               </div>
-              <button type="button" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-1.5 text-sm font-medium text-white shadow-lg shadow-indigo-900/40 transition hover:scale-[1.02]">
-                <Sparkles className="h-4 w-4" />
-                Upgrade
-              </button>
             </div>
 
             {/* Messages or hero */}
