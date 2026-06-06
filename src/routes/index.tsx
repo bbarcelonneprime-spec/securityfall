@@ -225,8 +225,9 @@ function Index() {
       reader.readAsDataURL(blob);
     });
 
-  const startRecording = async () => {
+  const beginRecording = async (target: "voice" | "alex") => {
     setVoiceError(null);
+    recordTargetRef.current = target;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -237,32 +238,57 @@ function Index() {
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || "audio/webm" });
-        setTranscribing(true);
+        const isAlex = recordTargetRef.current === "alex";
+        if (isAlex) setAlexTranscribing(true);
+        else setTranscribing(true);
         try {
           const audio = await blobToBase64(blob);
           const res = await transcribeFn({ data: { audio, mimeType: blob.type } });
           if (res.error) {
-            setVoiceError(res.error);
+            if (isAlex) setAlexError(res.error);
+            else setVoiceError(res.error);
             return;
           }
-          setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          if (isAlex) {
+            setAlexInput((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          } else {
+            setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          }
         } catch (err) {
-          setVoiceError(err instanceof Error ? err.message : "Erreur de transcription.");
+          const msg = err instanceof Error ? err.message : "Erreur de transcription.";
+          if (isAlex) setAlexError(msg);
+          else setVoiceError(msg);
         } finally {
-          setTranscribing(false);
+          if (isAlex) setAlexTranscribing(false);
+          else setTranscribing(false);
         }
       };
       mediaRecorderRef.current = mr;
       mr.start();
-      setRecording(true);
+      if (target === "alex") setAlexRecording(true);
+      else setRecording(true);
     } catch {
-      setVoiceError("Impossible d'accéder au micro. Autorise l'accès au microphone.");
+      const msg = "Impossible d'accéder au micro. Autorise l'accès au microphone.";
+      if (target === "alex") setAlexError(msg);
+      else setVoiceError(msg);
     }
   };
+
+  const startRecording = () => beginRecording("voice");
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
     setRecording(false);
+  };
+
+  const toggleAlexRecording = () => {
+    if (alexRecording) {
+      mediaRecorderRef.current?.stop();
+      setAlexRecording(false);
+    } else if (!alexTranscribing) {
+      setAlexError(null);
+      beginRecording("alex");
+    }
   };
 
 
