@@ -1278,8 +1278,25 @@ function Index() {
                   <span className="hidden items-center gap-1 rounded-full px-2 py-1 text-xs text-slate-400 sm:flex">
                     Flash <span className="text-slate-600">▾</span>
                   </span>
-                  <button type="button" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Micro">
-                    <Mic className="h-4 w-4" />
+                  <button
+                    type="button"
+                    onClick={toggleAlexRecording}
+                    disabled={alexTranscribing}
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 ${
+                      alexRecording
+                        ? "animate-pulse bg-red-500 text-white"
+                        : "text-slate-300 hover:bg-white/10"
+                    }`}
+                    aria-label={alexRecording ? "Arrêter l'enregistrement" : "Saisie vocale"}
+                    title={alexRecording ? "Arrête de parler pour transcrire" : "Parle au lieu d'écrire"}
+                  >
+                    {alexTranscribing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : alexRecording ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
                   </button>
                   {alexInput.trim() && (
                     <button
