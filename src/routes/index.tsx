@@ -1309,7 +1309,13 @@ function Index() {
                     </button>
                   )}
                 </div>
-                <p className="mt-2 text-center text-xs text-slate-500">Alex IA peut faire des erreurs. Vérifie les informations importantes.</p>
+                <p className="mt-2 text-center text-xs text-slate-500">
+                  {alexRecording
+                    ? "🎙️ Enregistrement… clique sur ⏹ pour transcrire."
+                    : alexTranscribing
+                      ? "Transcription en cours…"
+                      : "Alex IA peut faire des erreurs. Vérifie les informations importantes."}
+                </p>
               </div>
             </form>
           </section>
