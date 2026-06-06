@@ -5,13 +5,16 @@ import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
-  AudioLines, Volume2, Play, MicOff, Square, FileText, Copy,
+  AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
 import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
+import {
+  THEME_PRESETS, applyThemeHue, resetTheme, saveThemeHue, loadThemeHue, hexToOklchHue,
+} from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
@@ -164,6 +167,35 @@ function Index() {
   const [transcript, setTranscript] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordTargetRef = useRef<"voice" | "alex">("voice");
+
+  // Alex IA voice input state
+  const [alexRecording, setAlexRecording] = useState(false);
+  const [alexTranscribing, setAlexTranscribing] = useState(false);
+
+  // Custom theme (color palette) state
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [activeThemeHue, setActiveThemeHue] = useState<number | null>(null);
+
+  useEffect(() => {
+    const hue = loadThemeHue();
+    if (hue != null) {
+      applyThemeHue(hue);
+      setActiveThemeHue(hue);
+    }
+  }, []);
+
+  const selectThemeHue = (hue: number | null) => {
+    if (hue == null) {
+      resetTheme();
+      saveThemeHue(null);
+      setActiveThemeHue(null);
+    } else {
+      applyThemeHue(hue);
+      saveThemeHue(hue);
+      setActiveThemeHue(hue);
+    }
+  };
 
   const handleSynthesize = async (e: FormEvent) => {
     e.preventDefault();
@@ -193,8 +225,9 @@ function Index() {
       reader.readAsDataURL(blob);
     });
 
-  const startRecording = async () => {
+  const beginRecording = async (target: "voice" | "alex") => {
     setVoiceError(null);
+    recordTargetRef.current = target;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -205,32 +238,57 @@ function Index() {
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || "audio/webm" });
-        setTranscribing(true);
+        const isAlex = recordTargetRef.current === "alex";
+        if (isAlex) setAlexTranscribing(true);
+        else setTranscribing(true);
         try {
           const audio = await blobToBase64(blob);
           const res = await transcribeFn({ data: { audio, mimeType: blob.type } });
           if (res.error) {
-            setVoiceError(res.error);
+            if (isAlex) setAlexError(res.error);
+            else setVoiceError(res.error);
             return;
           }
-          setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          if (isAlex) {
+            setAlexInput((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          } else {
+            setTranscript((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          }
         } catch (err) {
-          setVoiceError(err instanceof Error ? err.message : "Erreur de transcription.");
+          const msg = err instanceof Error ? err.message : "Erreur de transcription.";
+          if (isAlex) setAlexError(msg);
+          else setVoiceError(msg);
         } finally {
-          setTranscribing(false);
+          if (isAlex) setAlexTranscribing(false);
+          else setTranscribing(false);
         }
       };
       mediaRecorderRef.current = mr;
       mr.start();
-      setRecording(true);
+      if (target === "alex") setAlexRecording(true);
+      else setRecording(true);
     } catch {
-      setVoiceError("Impossible d'accéder au micro. Autorise l'accès au microphone.");
+      const msg = "Impossible d'accéder au micro. Autorise l'accès au microphone.";
+      if (target === "alex") setAlexError(msg);
+      else setVoiceError(msg);
     }
   };
+
+  const startRecording = () => beginRecording("voice");
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
     setRecording(false);
+  };
+
+  const toggleAlexRecording = () => {
+    if (alexRecording) {
+      mediaRecorderRef.current?.stop();
+      setAlexRecording(false);
+    } else if (!alexTranscribing) {
+      setAlexError(null);
+      beginRecording("alex");
+    }
   };
 
 
@@ -552,6 +610,9 @@ function Index() {
               <button type="button" onClick={goToEmail} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <ShieldCheck className="h-4 w-4" /> Sécurité e-mail
               </button>
+              <button type="button" onClick={() => setThemeOpen(true)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Palette className="h-4 w-4" /> Thème & couleurs
+              </button>
             </nav>
 
             <div className="my-4 h-px bg-white/5" />
@@ -688,8 +749,121 @@ function Index() {
                   <span className="text-xs text-slate-400">Diagnostic & prévention</span>
                 </button>
               </div>
+
+              {/* Theme customizer trigger */}
+              <button
+                type="button"
+                onClick={() => setThemeOpen(true)}
+                className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
+              >
+                <Palette className="h-4 w-4" />
+                Personnaliser le thème
+              </button>
             </div>
           </div>
+
+          {/* ===== Theme customizer modal ===== */}
+          {themeOpen && (
+            <div
+              className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
+              onClick={() => setThemeOpen(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-3xl border border-white/10 bg-[#11111d] p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-1 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                    <Palette className="h-5 w-5 text-violet-400" />
+                    Crée ton thème
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setThemeOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Fermer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mb-5 text-sm text-slate-400">
+                  Choisis une palette ou ta propre couleur : tout le site s'adapte instantanément.
+                </p>
+
+                {/* Presets */}
+                <div className="grid grid-cols-4 gap-3">
+                  {THEME_PRESETS.map((p) => {
+                    const isActive =
+                      (p.id === "default" && activeThemeHue == null) ||
+                      activeThemeHue === p.hue;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => selectThemeHue(p.id === "default" ? null : p.hue)}
+                        className="group flex flex-col items-center gap-1.5"
+                        title={p.label}
+                      >
+                        <span
+                          className={`relative flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg ring-2 transition group-hover:scale-105 ${
+                            isActive ? "ring-white" : "ring-transparent"
+                          }`}
+                          style={{ background: p.swatch }}
+                        >
+                          {isActive && <Check className="h-5 w-5 text-white drop-shadow" />}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom color picker */}
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <label className="flex items-center justify-between text-sm text-slate-200">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-violet-400" />
+                      Couleur personnalisée
+                    </span>
+                    <input
+                      type="color"
+                      defaultValue="#7c3aed"
+                      onChange={(e) => selectThemeHue(hexToOklchHue(e.target.value))}
+                      className="h-9 w-14 cursor-pointer rounded-lg border border-white/10 bg-transparent"
+                      aria-label="Choisir une couleur"
+                    />
+                  </label>
+                  <div className="mt-4">
+                    <div className="mb-1.5 flex items-center justify-between text-xs text-slate-400">
+                      <span>Teinte</span>
+                      <span>{activeThemeHue != null ? `${Math.round(activeThemeHue)}°` : "auto"}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={360}
+                      value={activeThemeHue ?? 293}
+                      onChange={(e) => selectThemeHue(Number(e.target.value))}
+                      className="h-2 w-full cursor-pointer appearance-none rounded-full"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, oklch(60% 0.2 0), oklch(60% 0.2 60), oklch(60% 0.2 120), oklch(60% 0.2 180), oklch(60% 0.2 240), oklch(60% 0.2 300), oklch(60% 0.2 360))",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => selectThemeHue(null)}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Réinitialiser le thème par défaut
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       ) : view === "email" ? (
         <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -1106,10 +1280,6 @@ function Index() {
                 <span className="text-lg font-medium text-slate-200">Alex</span>
                 <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs text-slate-400">2.5 Flash</span>
               </div>
-              <button type="button" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-1.5 text-sm font-medium text-white shadow-lg shadow-indigo-900/40 transition hover:scale-[1.02]">
-                <Sparkles className="h-4 w-4" />
-                Upgrade
-              </button>
             </div>
 
             {/* Messages or hero */}
@@ -1224,8 +1394,25 @@ function Index() {
                   <span className="hidden items-center gap-1 rounded-full px-2 py-1 text-xs text-slate-400 sm:flex">
                     Flash <span className="text-slate-600">▾</span>
                   </span>
-                  <button type="button" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Micro">
-                    <Mic className="h-4 w-4" />
+                  <button
+                    type="button"
+                    onClick={toggleAlexRecording}
+                    disabled={alexTranscribing}
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 ${
+                      alexRecording
+                        ? "animate-pulse bg-red-500 text-white"
+                        : "text-slate-300 hover:bg-white/10"
+                    }`}
+                    aria-label={alexRecording ? "Arrêter l'enregistrement" : "Saisie vocale"}
+                    title={alexRecording ? "Arrête de parler pour transcrire" : "Parle au lieu d'écrire"}
+                  >
+                    {alexTranscribing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : alexRecording ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
                   </button>
                   {alexInput.trim() && (
                     <button
@@ -1238,7 +1425,13 @@ function Index() {
                     </button>
                   )}
                 </div>
-                <p className="mt-2 text-center text-xs text-slate-500">Alex IA peut faire des erreurs. Vérifie les informations importantes.</p>
+                <p className="mt-2 text-center text-xs text-slate-500">
+                  {alexRecording
+                    ? "🎙️ Enregistrement… clique sur ⏹ pour transcrire."
+                    : alexTranscribing
+                      ? "Transcription en cours…"
+                      : "Alex IA peut faire des erreurs. Vérifie les informations importantes."}
+                </p>
               </div>
             </form>
           </section>
