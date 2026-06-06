@@ -167,6 +167,35 @@ function Index() {
   const [transcript, setTranscript] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordTargetRef = useRef<"voice" | "alex">("voice");
+
+  // Alex IA voice input state
+  const [alexRecording, setAlexRecording] = useState(false);
+  const [alexTranscribing, setAlexTranscribing] = useState(false);
+
+  // Custom theme (color palette) state
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [activeThemeHue, setActiveThemeHue] = useState<number | null>(null);
+
+  useEffect(() => {
+    const hue = loadThemeHue();
+    if (hue != null) {
+      applyThemeHue(hue);
+      setActiveThemeHue(hue);
+    }
+  }, []);
+
+  const selectThemeHue = (hue: number | null) => {
+    if (hue == null) {
+      resetTheme();
+      saveThemeHue(null);
+      setActiveThemeHue(null);
+    } else {
+      applyThemeHue(hue);
+      saveThemeHue(hue);
+      setActiveThemeHue(hue);
+    }
+  };
 
   const handleSynthesize = async (e: FormEvent) => {
     e.preventDefault();
