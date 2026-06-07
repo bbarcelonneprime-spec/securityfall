@@ -143,6 +143,113 @@
   }
 }
 
+/* ============================================================
+   Antigravity-style animated background
+   Floating aurora orbs + drifting conic glow + subtle grid.
+   ============================================================ */
+.ag-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ag-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+
+.ag-orb-1 {
+  width: 46vw;
+  height: 46vw;
+  top: -8vw;
+  left: -6vw;
+  background: radial-gradient(circle at 30% 30%, #5b6cff, transparent 70%);
+  animation: ag-float-1 22s ease-in-out infinite;
+}
+
+.ag-orb-2 {
+  width: 40vw;
+  height: 40vw;
+  bottom: -10vw;
+  right: -8vw;
+  background: radial-gradient(circle at 50% 50%, #c026ff, transparent 70%);
+  animation: ag-float-2 26s ease-in-out infinite;
+}
+
+.ag-orb-3 {
+  width: 34vw;
+  height: 34vw;
+  top: 30%;
+  left: 40%;
+  background: radial-gradient(circle at 50% 50%, #ff2d82, transparent 70%);
+  animation: ag-float-3 30s ease-in-out infinite;
+}
+
+/* Slowly rotating wide conic glow, antigravity signature look */
+.ag-conic {
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(91, 108, 255, 0.12),
+    rgba(192, 38, 255, 0.10),
+    rgba(255, 45, 130, 0.12),
+    rgba(91, 108, 255, 0.12)
+  );
+  filter: blur(40px);
+  animation: ag-spin 40s linear infinite;
+  will-change: transform;
+}
+
+/* Subtle moving grid overlay */
+.ag-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 80%);
+  animation: ag-grid-pan 28s linear infinite;
+}
+
+@keyframes ag-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(8vw, 6vw) scale(1.12); }
+  66% { transform: translate(-4vw, 10vw) scale(0.95); }
+}
+
+@keyframes ag-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-9vw, -5vw) scale(1.1); }
+  66% { transform: translate(5vw, -9vw) scale(0.92); }
+}
+
+@keyframes ag-float-3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-58%, -42%) scale(1.18); }
+}
+
+@keyframes ag-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ag-grid-pan {
+  from { background-position: 0 0; }
+  to { background-position: 48px 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-orb, .ag-conic, .ag-grid { animation: none; }
+}
+
 /* Smooth transition between in-app views (home / alex / email / voice) */
 @keyframes view-fade-in {
   from {

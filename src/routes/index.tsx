@@ -11,6 +11,10 @@ import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import {
+  fetchAlexData, upsertAlexConversation, deleteAlexConversation as deleteAlexConversationFn,
+  saveAlexImage, deleteAlexImage as deleteAlexImageFn,
+} from "../lib/alex-store.functions";
 import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
 import {
   THEME_PRESETS, applyThemeHue, resetTheme, saveThemeHue, loadThemeHue, hexToOklchHue,
@@ -19,6 +23,7 @@ import { extractFileText } from "../lib/extract-file";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
+import AuroraBackground from "@/components/AuroraBackground";
 import alexLogo from "@/assets/alex-logo.jpg";
 import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
 
@@ -127,6 +132,11 @@ function Index() {
   const alexFn = useServerFn(chatWithAlex);
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
+  const fetchDataFn = useServerFn(fetchAlexData);
+  const upsertConvFn = useServerFn(upsertAlexConversation);
+  const deleteConvFn = useServerFn(deleteAlexConversationFn);
+  const saveImageFn = useServerFn(saveAlexImage);
+  const deleteImageFn = useServerFn(deleteAlexImageFn);
 
   // Auth gate
   const [session, setSession] = useState<Session | null>(null);
@@ -144,7 +154,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -320,17 +330,61 @@ function Index() {
   const alexEndRef = useRef<HTMLDivElement>(null);
   const alexFileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const loaded = loadAlexConversations();
-    setAlexConvs(loaded);
-    if (loaded.length > 0) setAlexCurrentId(loaded[0].id);
-  }, []);
+  // Bibliothèque d'images générées (synchronisée sur le compte)
+  type AlexImage = { id: string; prompt: string; imageUrl: string; createdAt: number };
+  const [alexImages, setAlexImages] = useState<AlexImage[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  // Chargement initial depuis le cloud (conversations + images), avec repli localStorage
   useEffect(() => {
-    saveAlexConversations(alexConvs);
-  }, [alexConvs]);
+    if (!session) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchDataFn();
+        if (cancelled) return;
+        setAlexConvs(data.conversations);
+        setAlexImages(data.images);
+        if (data.conversations.length > 0) setAlexCurrentId(data.conversations[0].id);
+        // Migration unique des conversations locales vers le cloud
+        const local = loadAlexConversations();
+        if (data.conversations.length === 0 && local.length > 0) {
+          setAlexConvs(local);
+          setAlexCurrentId(local[0].id);
+          for (const c of local) {
+            void upsertConvFn({ data: { id: c.id, title: c.title, messages: c.messages, createdAt: c.createdAt } }).catch(() => {});
+          }
+          saveAlexConversations([]);
+        }
+      } catch {
+        const local = loadAlexConversations();
+        if (!cancelled) {
+          setAlexConvs(local);
+          if (local.length > 0) setAlexCurrentId(local[0].id);
+        }
+      } finally {
+        if (!cancelled) setDataLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session, fetchDataFn, upsertConvFn]);
 
   const currentConv = alexConvs.find((c) => c.id === alexCurrentId) ?? null;
+
+  // Sauvegarde cloud automatique (anti-rebond) de la conversation active
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!dataLoaded || !currentConv) return;
+    const conv = currentConv;
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => {
+      void upsertConvFn({
+        data: { id: conv.id, title: conv.title, messages: conv.messages, createdAt: conv.createdAt },
+      }).catch(() => {});
+    }, 700);
+    return () => { if (persistTimer.current) clearTimeout(persistTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConv?.messages, currentConv?.title, dataLoaded]);
 
   const newAlexConversation = () => {
     const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -353,6 +407,12 @@ function Index() {
       if (alexCurrentId === id) setAlexCurrentId(next[0]?.id ?? null);
       return next;
     });
+    void deleteConvFn({ data: { id } }).catch(() => {});
+  };
+
+  const removeAlexImage = (id: string) => {
+    setAlexImages((prev) => prev.filter((i) => i.id !== id));
+    void deleteImageFn({ data: { id } }).catch(() => {});
   };
 
   const ensureCurrentConv = (): AlexConversation => {
@@ -393,9 +453,15 @@ function Index() {
     try {
       if (alexImageMode) {
         const res = await alexImageFn({ data: { prompt: promptText } });
+        let imageUrl = res.imageUrl;
+        try {
+          const saved = await saveImageFn({ data: { prompt: promptText, dataUrl: res.imageUrl } });
+          imageUrl = saved.imageUrl;
+          setAlexImages((prev) => [saved, ...prev]);
+        } catch { /* la bibliothèque échoue silencieusement, l'image reste affichée */ }
         updateConv(conv.id, (c) => ({
           ...c,
-          messages: [...c.messages, { role: "assistant", content: `Voici l'image générée pour : *${promptText}*`, imageUrl: res.imageUrl }],
+          messages: [...c.messages, { role: "assistant", content: `Voici l'image générée pour : *${promptText}*`, imageUrl }],
         }));
       } else {
         const historyForApi = newMessages
@@ -546,6 +612,8 @@ function Index() {
   const goHome = () => setView("home");
 
   const goToVoice = () => setView("voice");
+
+  const goToLibrary = () => setView("library");
 
   // Connexion obligatoire pour accéder au site
   if (!authChecked) {
@@ -1172,10 +1240,72 @@ function Index() {
             <p className="mt-10 text-center text-xs text-slate-500">Propulsé par ElevenLabs — © Alex Graph</p>
           </div>
         </main>
+      ) : view === "library" ? (
+        /* ============ IMAGE LIBRARY VIEW ============ */
+        <main className="relative min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-16 pt-24 sm:py-20">
+            <div className="mb-8 flex items-center gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
+                <LibraryBig className="h-6 w-6" />
+              </span>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Ma bibliothèque d'images</h1>
+                <p className="text-sm text-slate-400">Toutes tes images générées avec Alex IA, synchronisées sur ton compte.</p>
+              </div>
+            </div>
+
+            {!dataLoaded ? (
+              <div className="flex items-center gap-2 text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>
+            ) : alexImages.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl">
+                <ImageIcon className="mx-auto mb-3 h-8 w-8 text-slate-500" />
+                <p className="text-sm text-slate-300">Aucune image pour l'instant.</p>
+                <button
+                  type="button"
+                  onClick={() => { setAlexImageMode(true); goToAlex(); }}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:scale-105"
+                >
+                  <Sparkles className="h-4 w-4" /> Générer une image
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {alexImages.map((img) => (
+                  <div key={img.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    <img src={img.imageUrl} alt={img.prompt} className="aspect-square w-full object-cover" loading="lazy" />
+                    <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/90 to-transparent p-3 transition group-hover:translate-y-0">
+                      <p className="line-clamp-2 text-xs text-slate-200">{img.prompt || "Sans description"}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <a
+                          href={img.imageUrl}
+                          download={`alex-ia-${img.id}.png`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white transition hover:bg-white/20"
+                        >
+                          <Download className="h-3 w-3" /> Télécharger
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => removeAlexImage(img.id)}
+                          className="flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-1 text-[11px] text-red-200 transition hover:bg-red-500/40"
+                        >
+                          <Trash2 className="h-3 w-3" /> Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden bg-[#0b0f1c] text-slate-100 sm:flex-row">
-          {/* Ambient aurora background */}
+          {/* Ambient animated background (antigravity style) */}
+          <AuroraBackground />
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-indigo-700/20 blur-[120px]" />
             <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-violet-600/15 blur-[120px]" />
@@ -1205,7 +1335,7 @@ function Index() {
                 <Search className="h-4 w-4" />
                 Search chats
               </button>
-              <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
+              <button type="button" onClick={goToLibrary} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
                 <LibraryBig className="h-4 w-4" />
                 Library
               </button>
