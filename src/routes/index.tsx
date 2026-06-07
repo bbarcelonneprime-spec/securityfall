@@ -132,6 +132,11 @@ function Index() {
   const alexFn = useServerFn(chatWithAlex);
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
+  const fetchDataFn = useServerFn(fetchAlexData);
+  const upsertConvFn = useServerFn(upsertAlexConversation);
+  const deleteConvFn = useServerFn(deleteAlexConversationFn);
+  const saveImageFn = useServerFn(saveAlexImage);
+  const deleteImageFn = useServerFn(deleteAlexImageFn);
 
   // Auth gate
   const [session, setSession] = useState<Session | null>(null);
