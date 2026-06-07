@@ -154,7 +154,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
