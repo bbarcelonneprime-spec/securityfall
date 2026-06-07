@@ -1243,7 +1243,8 @@ function Index() {
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden bg-[#0b0f1c] text-slate-100 sm:flex-row">
-          {/* Ambient aurora background */}
+          {/* Ambient animated background (antigravity style) */}
+          <AuroraBackground />
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-indigo-700/20 blur-[120px]" />
             <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-violet-600/15 blur-[120px]" />
