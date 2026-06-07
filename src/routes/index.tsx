@@ -1274,7 +1274,7 @@ function Index() {
                 <Search className="h-4 w-4" />
                 Search chats
               </button>
-              <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
+              <button type="button" onClick={goToLibrary} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
                 <LibraryBig className="h-4 w-4" />
                 Library
               </button>
