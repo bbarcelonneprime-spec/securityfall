@@ -11,6 +11,10 @@ import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
 import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import {
+  fetchAlexData, upsertAlexConversation, deleteAlexConversation as deleteAlexConversationFn,
+  saveAlexImage, deleteAlexImage as deleteAlexImageFn,
+} from "../lib/alex-store.functions";
 import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
 import {
   THEME_PRESETS, applyThemeHue, resetTheme, saveThemeHue, loadThemeHue, hexToOklchHue,
@@ -19,6 +23,7 @@ import { extractFileText } from "../lib/extract-file";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
+import AuroraBackground from "@/components/AuroraBackground";
 import alexLogo from "@/assets/alex-logo.jpg";
 import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
 
