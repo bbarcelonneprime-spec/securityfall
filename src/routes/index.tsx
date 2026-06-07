@@ -613,6 +613,8 @@ function Index() {
 
   const goToVoice = () => setView("voice");
 
+  const goToLibrary = () => setView("library");
+
   // Connexion obligatoire pour accéder au site
   if (!authChecked) {
     return (
