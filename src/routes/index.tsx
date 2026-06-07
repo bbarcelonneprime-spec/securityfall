@@ -453,9 +453,15 @@ function Index() {
     try {
       if (alexImageMode) {
         const res = await alexImageFn({ data: { prompt: promptText } });
+        let imageUrl = res.imageUrl;
+        try {
+          const saved = await saveImageFn({ data: { prompt: promptText, dataUrl: res.imageUrl } });
+          imageUrl = saved.imageUrl;
+          setAlexImages((prev) => [saved, ...prev]);
+        } catch { /* la bibliothèque échoue silencieusement, l'image reste affichée */ }
         updateConv(conv.id, (c) => ({
           ...c,
-          messages: [...c.messages, { role: "assistant", content: `Voici l'image générée pour : *${promptText}*`, imageUrl: res.imageUrl }],
+          messages: [...c.messages, { role: "assistant", content: `Voici l'image générée pour : *${promptText}*`, imageUrl }],
         }));
       } else {
         const historyForApi = newMessages
