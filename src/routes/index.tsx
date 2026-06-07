@@ -1240,6 +1240,67 @@ function Index() {
             <p className="mt-10 text-center text-xs text-slate-500">Propulsé par ElevenLabs — © Alex Graph</p>
           </div>
         </main>
+      ) : view === "library" ? (
+        /* ============ IMAGE LIBRARY VIEW ============ */
+        <main className="relative min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-16 pt-24 sm:py-20">
+            <div className="mb-8 flex items-center gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
+                <LibraryBig className="h-6 w-6" />
+              </span>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Ma bibliothèque d'images</h1>
+                <p className="text-sm text-slate-400">Toutes tes images générées avec Alex IA, synchronisées sur ton compte.</p>
+              </div>
+            </div>
+
+            {!dataLoaded ? (
+              <div className="flex items-center gap-2 text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>
+            ) : alexImages.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl">
+                <ImageIcon className="mx-auto mb-3 h-8 w-8 text-slate-500" />
+                <p className="text-sm text-slate-300">Aucune image pour l'instant.</p>
+                <button
+                  type="button"
+                  onClick={() => { setAlexImageMode(true); goToAlex(); }}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:scale-105"
+                >
+                  <Sparkles className="h-4 w-4" /> Générer une image
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {alexImages.map((img) => (
+                  <div key={img.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    <img src={img.imageUrl} alt={img.prompt} className="aspect-square w-full object-cover" loading="lazy" />
+                    <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/90 to-transparent p-3 transition group-hover:translate-y-0">
+                      <p className="line-clamp-2 text-xs text-slate-200">{img.prompt || "Sans description"}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <a
+                          href={img.imageUrl}
+                          download={`alex-ia-${img.id}.png`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white transition hover:bg-white/20"
+                        >
+                          <Download className="h-3 w-3" /> Télécharger
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => removeAlexImage(img.id)}
+                          className="flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-1 text-[11px] text-red-200 transition hover:bg-red-500/40"
+                        >
+                          <Trash2 className="h-3 w-3" /> Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden bg-[#0b0f1c] text-slate-100 sm:flex-row">
