@@ -330,17 +330,61 @@ function Index() {
   const alexEndRef = useRef<HTMLDivElement>(null);
   const alexFileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const loaded = loadAlexConversations();
-    setAlexConvs(loaded);
-    if (loaded.length > 0) setAlexCurrentId(loaded[0].id);
-  }, []);
+  // Bibliothèque d'images générées (synchronisée sur le compte)
+  type AlexImage = { id: string; prompt: string; imageUrl: string; createdAt: number };
+  const [alexImages, setAlexImages] = useState<AlexImage[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  // Chargement initial depuis le cloud (conversations + images), avec repli localStorage
   useEffect(() => {
-    saveAlexConversations(alexConvs);
-  }, [alexConvs]);
+    if (!session) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchDataFn();
+        if (cancelled) return;
+        setAlexConvs(data.conversations);
+        setAlexImages(data.images);
+        if (data.conversations.length > 0) setAlexCurrentId(data.conversations[0].id);
+        // Migration unique des conversations locales vers le cloud
+        const local = loadAlexConversations();
+        if (data.conversations.length === 0 && local.length > 0) {
+          setAlexConvs(local);
+          setAlexCurrentId(local[0].id);
+          for (const c of local) {
+            void upsertConvFn({ data: { id: c.id, title: c.title, messages: c.messages, createdAt: c.createdAt } }).catch(() => {});
+          }
+          saveAlexConversations([]);
+        }
+      } catch {
+        const local = loadAlexConversations();
+        if (!cancelled) {
+          setAlexConvs(local);
+          if (local.length > 0) setAlexCurrentId(local[0].id);
+        }
+      } finally {
+        if (!cancelled) setDataLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session, fetchDataFn, upsertConvFn]);
 
   const currentConv = alexConvs.find((c) => c.id === alexCurrentId) ?? null;
+
+  // Sauvegarde cloud automatique (anti-rebond) de la conversation active
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!dataLoaded || !currentConv) return;
+    const conv = currentConv;
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => {
+      void upsertConvFn({
+        data: { id: conv.id, title: conv.title, messages: conv.messages, createdAt: conv.createdAt },
+      }).catch(() => {});
+    }, 700);
+    return () => { if (persistTimer.current) clearTimeout(persistTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConv?.messages, currentConv?.title, dataLoaded]);
 
   const newAlexConversation = () => {
     const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -363,6 +407,12 @@ function Index() {
       if (alexCurrentId === id) setAlexCurrentId(next[0]?.id ?? null);
       return next;
     });
+    void deleteConvFn({ data: { id } }).catch(() => {});
+  };
+
+  const removeAlexImage = (id: string) => {
+    setAlexImages((prev) => prev.filter((i) => i.id !== id));
+    void deleteImageFn({ data: { id } }).catch(() => {});
   };
 
   const ensureCurrentConv = (): AlexConversation => {
