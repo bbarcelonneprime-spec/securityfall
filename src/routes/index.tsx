@@ -864,7 +864,7 @@ function Index() {
               onClick={() => setThemeOpen(false)}
             >
               <div
-                className="w-full max-w-md rounded-3xl border border-white/10 bg-[#11111d] p-6 shadow-2xl"
+                className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-[#11111d] p-6 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-1 flex items-center justify-between">
