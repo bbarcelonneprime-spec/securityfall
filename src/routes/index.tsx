@@ -1303,7 +1303,7 @@ function Index() {
         </main>
       ) : view === "library" ? (
         /* ============ IMAGE LIBRARY VIEW ============ */
-        <main className="relative min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
           <AuroraBackground />
           <div className="relative z-10 mx-auto max-w-6xl px-4 py-16 pt-24 sm:py-20">
             <div className="mb-8 flex items-center gap-3">
