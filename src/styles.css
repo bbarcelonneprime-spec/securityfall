@@ -169,7 +169,7 @@
   height: 46vw;
   top: -8vw;
   left: -6vw;
-  background: radial-gradient(circle at 30% 30%, #5b6cff, transparent 70%);
+  background: radial-gradient(circle at 30% 30%, var(--ag-p1, #5b6cff), transparent 70%);
   animation: ag-float-1 22s ease-in-out infinite;
 }
 
@@ -178,7 +178,7 @@
   height: 40vw;
   bottom: -10vw;
   right: -8vw;
-  background: radial-gradient(circle at 50% 50%, #c026ff, transparent 70%);
+  background: radial-gradient(circle at 50% 50%, var(--ag-p2, #c026ff), transparent 70%);
   animation: ag-float-2 26s ease-in-out infinite;
 }
 
@@ -187,7 +187,7 @@
   height: 34vw;
   top: 30%;
   left: 40%;
-  background: radial-gradient(circle at 50% 50%, #ff2d82, transparent 70%);
+  background: radial-gradient(circle at 50% 50%, var(--ag-p3, #ff2d82), transparent 70%);
   animation: ag-float-3 30s ease-in-out infinite;
 }
 
@@ -197,10 +197,10 @@
   inset: -40%;
   background: conic-gradient(
     from 0deg at 50% 50%,
-    rgba(91, 108, 255, 0.12),
-    rgba(192, 38, 255, 0.10),
-    rgba(255, 45, 130, 0.12),
-    rgba(91, 108, 255, 0.12)
+    color-mix(in oklab, var(--ag-p1, #5b6cff) 14%, transparent),
+    color-mix(in oklab, var(--ag-p2, #c026ff) 12%, transparent),
+    color-mix(in oklab, var(--ag-p3, #ff2d82) 14%, transparent),
+    color-mix(in oklab, var(--ag-p1, #5b6cff) 14%, transparent)
   );
   filter: blur(40px);
   animation: ag-spin 40s linear infinite;
