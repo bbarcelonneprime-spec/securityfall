@@ -5,7 +5,7 @@ import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
-  AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw,
+  AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
@@ -18,6 +18,7 @@ import {
 import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
 import {
   THEME_PRESETS, applyThemeHue, resetTheme, saveThemeHue, loadThemeHue, hexToOklchHue,
+  BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
 } from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,12 +188,18 @@ function Index() {
   const [themeOpen, setThemeOpen] = useState(false);
   const [activeThemeHue, setActiveThemeHue] = useState<number | null>(null);
 
+  // Background theme (animated background) state
+  const [activeBgId, setActiveBgId] = useState<string>("antigravity");
+
   useEffect(() => {
     const hue = loadThemeHue();
     if (hue != null) {
       applyThemeHue(hue);
       setActiveThemeHue(hue);
     }
+    const bg = loadBackgroundTheme();
+    applyBackgroundTheme(bg);
+    setActiveBgId(bg);
   }, []);
 
   const selectThemeHue = (hue: number | null) => {
@@ -205,6 +212,12 @@ function Index() {
       saveThemeHue(hue);
       setActiveThemeHue(hue);
     }
+  };
+
+  const selectBackground = (id: string) => {
+    applyBackgroundTheme(id);
+    saveBackgroundTheme(id);
+    setActiveBgId(id);
   };
 
   const handleSynthesize = async (e: FormEvent) => {
@@ -633,10 +646,22 @@ function Index() {
     session.user.email?.split("@")[0] ||
     "ami";
 
+  // Mode admin : activé automatiquement pour ce compte
+  const ADMIN_EMAIL = "bbarcelonneprime@gmail.com";
+  const isAdmin = (session.user.email ?? "").toLowerCase() === ADMIN_EMAIL;
+
   return (
     <>
       {/* User profile menu (top-right) */}
       <UserMenu session={session} onSignOut={signOut} />
+
+      {/* Admin badge — visible uniquement pour le compte administrateur */}
+      {isAdmin && (
+        <div className="fixed right-16 top-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500/90 to-yellow-500/90 px-3 py-2 text-xs font-bold text-black shadow-lg backdrop-blur">
+          <Crown className="h-3.5 w-3.5" />
+          Mode Admin
+        </div>
+      )}
 
       {/* Top-left home button (hidden on home view) */}
       {view !== "home" && (
@@ -654,9 +679,11 @@ function Index() {
       <div key={view} className="view-transition">
       {view === "home" ? (
         /* ============ HOME / LANDING VIEW ============ */
-        <main className="relative flex min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+        <main className="relative flex min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
+          {/* Animated particle background (antigravity) */}
+          <AuroraBackground />
           {/* ===== Sidebar (style Lovable) ===== */}
-          <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16] px-3 py-4 md:flex">
+          <aside className="relative z-10 hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16]/90 px-3 py-4 backdrop-blur-xl md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
               <img src={alexGraphLogo} alt="Alex Graph" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
               <div className="leading-tight">
@@ -707,7 +734,7 @@ function Index() {
           </aside>
 
           {/* ===== Main hero area ===== */}
-          <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden">
+          <div className="relative z-10 flex min-h-screen flex-1 flex-col overflow-hidden">
             {/* Aurora background : bleu en haut → magenta en bas */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div
@@ -837,7 +864,7 @@ function Index() {
               onClick={() => setThemeOpen(false)}
             >
               <div
-                className="w-full max-w-md rounded-3xl border border-white/10 bg-[#11111d] p-6 shadow-2xl"
+                className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-[#11111d] p-6 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-1 flex items-center justify-between">
@@ -920,6 +947,40 @@ function Index() {
                     />
                   </div>
                 </div>
+
+                {/* Background (animated) themes */}
+                <div className="mt-6">
+                  <p className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200">
+                    <Wallpaper className="h-4 w-4 text-violet-400" />
+                    Couleur d'arrière-plan
+                  </p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {BACKGROUND_THEMES.map((b) => {
+                      const isActive = activeBgId === b.id;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => selectBackground(b.id)}
+                          className="group flex flex-col items-center gap-1.5"
+                          title={b.label}
+                        >
+                          <span
+                            className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl shadow-lg ring-2 transition group-hover:scale-105 ${
+                              isActive ? "ring-white" : "ring-transparent"
+                            }`}
+                            style={{ background: b.swatch }}
+                          >
+                            {isActive && <Check className="h-5 w-5 text-white drop-shadow" />}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{b.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+
 
                 <button
                   type="button"
@@ -1078,24 +1139,26 @@ function Index() {
         </main>
       ) : view === "voice" ? (
         /* ============ VOIX IA VIEW (ElevenLabs) ============ */
-        <main className="relative min-h-screen overflow-hidden bg-[#0b0f1c] px-4 py-16 text-slate-100">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-fuchsia-700/20 blur-[120px]" />
-            <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-pink-600/15 blur-[120px]" />
-          </div>
+        <main className="relative min-h-screen overflow-hidden px-4 py-16 text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          {/* Animated particle background (antigravity) */}
+          <AuroraBackground />
 
-          <div className="relative z-10 mx-auto w-full max-w-2xl">
-            <header className="mb-8 text-center">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
-                <AudioLines className="h-7 w-7" />
-              </div>
-              <h1 className="bg-gradient-to-r from-fuchsia-300 via-white to-pink-300 bg-clip-text text-4xl font-semibold tracking-tight text-transparent">
-                Voix IA
+          <div className="relative z-10 mx-auto w-full max-w-3xl">
+            <header className="mb-10 text-center">
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-slate-300 backdrop-blur">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600">
+                  <AudioLines className="h-3 w-3 text-white" />
+                </span>
+                Propulsé par ElevenLabs
+              </span>
+              <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                Crée un audio <span className="bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">réaliste</span>
               </h1>
-              <p className="mt-3 text-sm text-slate-400">
-                Convertis du texte en voix naturelle ou transcris ta voix en texte.
+              <p className="mx-auto mt-3 max-w-lg text-sm text-slate-400">
+                Transforme ton texte en voix naturelle, ou transcris ta voix en texte — dans plusieurs voix et langues.
               </p>
             </header>
+
 
             {/* Mode switch */}
             <div className="mx-auto mb-8 flex max-w-sm items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
@@ -1242,7 +1305,7 @@ function Index() {
         </main>
       ) : view === "library" ? (
         /* ============ IMAGE LIBRARY VIEW ============ */
-        <main className="relative min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
           <AuroraBackground />
           <div className="relative z-10 mx-auto max-w-6xl px-4 py-16 pt-24 sm:py-20">
             <div className="mb-8 flex items-center gap-3">
@@ -1303,7 +1366,7 @@ function Index() {
         </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
-        <main className="relative flex h-screen flex-col overflow-hidden bg-[#0b0f1c] text-slate-100 sm:flex-row">
+        <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
           {/* Ambient animated background (antigravity style) */}
           <AuroraBackground />
           <div className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -130,3 +130,121 @@ export function hexToOklchHue(hex: string): number {
   if (hue < 0) hue += 360;
   return hue;
 }
+
+// ============================================================
+// Background theme engine (antigravity-style animated backgrounds)
+// Controls the page base color + the colors of the floating particles and
+// aurora orbs via CSS variables (--ag-bg, --ag-p1, --ag-p2, --ag-p3). Applied
+// on <html> so the whole site adapts at once.
+// ============================================================
+
+export type BackgroundTheme = {
+  id: string;
+  label: string;
+  base: string; // page background color
+  text: "light" | "dark"; // recommended foreground for this background
+  particles: [string, string, string]; // particle / orb colors
+  swatch: string; // preview gradient
+};
+
+export const BACKGROUND_THEMES: BackgroundTheme[] = [
+  {
+    id: "antigravity",
+    label: "Antigravité",
+    base: "#0a0a14",
+    text: "light",
+    particles: ["#5b6cff", "#c026ff", "#ff2d82"],
+    swatch: "linear-gradient(135deg, #5b6cff, #ff2d82)",
+  },
+  {
+    id: "midnight",
+    label: "Minuit",
+    base: "#05060f",
+    text: "light",
+    particles: ["#3b82f6", "#6366f1", "#8b5cf6"],
+    swatch: "linear-gradient(135deg, #0a0a1a, #4f46e5)",
+  },
+  {
+    id: "aurora",
+    label: "Aurore",
+    base: "#04140f",
+    text: "light",
+    particles: ["#34d399", "#22d3ee", "#a78bfa"],
+    swatch: "linear-gradient(135deg, #10b981, #22d3ee)",
+  },
+  {
+    id: "sunset",
+    label: "Coucher",
+    base: "#160a08",
+    text: "light",
+    particles: ["#fb923c", "#f43f5e", "#a855f7"],
+    swatch: "linear-gradient(135deg, #fb923c, #e11d48)",
+  },
+  {
+    id: "ink",
+    label: "Encre",
+    base: "#09090b",
+    text: "light",
+    particles: ["#94a3b8", "#64748b", "#cbd5e1"],
+    swatch: "linear-gradient(135deg, #1f2937, #64748b)",
+  },
+  {
+    id: "rose",
+    label: "Rose nuit",
+    base: "#140810",
+    text: "light",
+    particles: ["#fb7185", "#f472b6", "#c084fc"],
+    swatch: "linear-gradient(135deg, #fb7185, #c084fc)",
+  },
+  {
+    id: "deepsea",
+    label: "Abysse",
+    base: "#020c18",
+    text: "light",
+    particles: ["#38bdf8", "#22d3ee", "#2dd4bf"],
+    swatch: "linear-gradient(135deg, #0c4a6e, #22d3ee)",
+  },
+  {
+    id: "daylight",
+    label: "Clair",
+    base: "#f4f5fb",
+    text: "dark",
+    particles: ["#6366f1", "#ec4899", "#f59e0b"],
+    swatch: "linear-gradient(135deg, #e5e7eb, #6366f1)",
+  },
+];
+
+const BG_STORAGE_KEY = "alex-background-theme";
+export const DEFAULT_BACKGROUND_ID = "antigravity";
+
+export function getBackgroundTheme(id: string | null): BackgroundTheme {
+  return BACKGROUND_THEMES.find((t) => t.id === id) ?? BACKGROUND_THEMES[0];
+}
+
+/** Apply a background theme by setting the global CSS variables. */
+export function applyBackgroundTheme(id: string) {
+  if (typeof document === "undefined") return;
+  const t = getBackgroundTheme(id);
+  const root = document.documentElement;
+  root.style.setProperty("--ag-bg", t.base);
+  root.style.setProperty("--ag-p1", t.particles[0]);
+  root.style.setProperty("--ag-p2", t.particles[1]);
+  root.style.setProperty("--ag-p3", t.particles[2]);
+}
+
+export function saveBackgroundTheme(id: string) {
+  try {
+    localStorage.setItem(BG_STORAGE_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadBackgroundTheme(): string {
+  try {
+    return localStorage.getItem(BG_STORAGE_KEY) ?? DEFAULT_BACKGROUND_ID;
+  } catch {
+    return DEFAULT_BACKGROUND_ID;
+  }
+}
+
