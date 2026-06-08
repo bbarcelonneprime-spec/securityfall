@@ -1139,24 +1139,26 @@ function Index() {
         </main>
       ) : view === "voice" ? (
         /* ============ VOIX IA VIEW (ElevenLabs) ============ */
-        <main className="relative min-h-screen overflow-hidden bg-[#0b0f1c] px-4 py-16 text-slate-100">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -left-32 top-1/4 h-[500px] w-[500px] rounded-full bg-fuchsia-700/20 blur-[120px]" />
-            <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-pink-600/15 blur-[120px]" />
-          </div>
+        <main className="relative min-h-screen overflow-hidden px-4 py-16 text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          {/* Animated particle background (antigravity) */}
+          <AuroraBackground />
 
-          <div className="relative z-10 mx-auto w-full max-w-2xl">
-            <header className="mb-8 text-center">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
-                <AudioLines className="h-7 w-7" />
-              </div>
-              <h1 className="bg-gradient-to-r from-fuchsia-300 via-white to-pink-300 bg-clip-text text-4xl font-semibold tracking-tight text-transparent">
-                Voix IA
+          <div className="relative z-10 mx-auto w-full max-w-3xl">
+            <header className="mb-10 text-center">
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-slate-300 backdrop-blur">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600">
+                  <AudioLines className="h-3 w-3 text-white" />
+                </span>
+                Propulsé par ElevenLabs
+              </span>
+              <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                Crée un audio <span className="bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">réaliste</span>
               </h1>
-              <p className="mt-3 text-sm text-slate-400">
-                Convertis du texte en voix naturelle ou transcris ta voix en texte.
+              <p className="mx-auto mt-3 max-w-lg text-sm text-slate-400">
+                Transforme ton texte en voix naturelle, ou transcris ta voix en texte — dans plusieurs voix et langues.
               </p>
             </header>
+
 
             {/* Mode switch */}
             <div className="mx-auto mb-8 flex max-w-sm items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
