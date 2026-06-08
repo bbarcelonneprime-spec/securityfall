@@ -188,12 +188,18 @@ function Index() {
   const [themeOpen, setThemeOpen] = useState(false);
   const [activeThemeHue, setActiveThemeHue] = useState<number | null>(null);
 
+  // Background theme (animated background) state
+  const [activeBgId, setActiveBgId] = useState<string>("antigravity");
+
   useEffect(() => {
     const hue = loadThemeHue();
     if (hue != null) {
       applyThemeHue(hue);
       setActiveThemeHue(hue);
     }
+    const bg = loadBackgroundTheme();
+    applyBackgroundTheme(bg);
+    setActiveBgId(bg);
   }, []);
 
   const selectThemeHue = (hue: number | null) => {
@@ -206,6 +212,12 @@ function Index() {
       saveThemeHue(hue);
       setActiveThemeHue(hue);
     }
+  };
+
+  const selectBackground = (id: string) => {
+    applyBackgroundTheme(id);
+    saveBackgroundTheme(id);
+    setActiveBgId(id);
   };
 
   const handleSynthesize = async (e: FormEvent) => {
