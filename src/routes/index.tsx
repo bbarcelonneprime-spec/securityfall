@@ -646,6 +646,10 @@ function Index() {
     session.user.email?.split("@")[0] ||
     "ami";
 
+  // Mode admin : activé automatiquement pour ce compte
+  const ADMIN_EMAIL = "bbarcelonneprime@gmail.com";
+  const isAdmin = (session.user.email ?? "").toLowerCase() === ADMIN_EMAIL;
+
   return (
     <>
       {/* User profile menu (top-right) */}
