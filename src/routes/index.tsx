@@ -683,7 +683,7 @@ function Index() {
           {/* Animated particle background (antigravity) */}
           <AuroraBackground />
           {/* ===== Sidebar (style Lovable) ===== */}
-          <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16] px-3 py-4 md:flex">
+          <aside className="relative z-10 hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16]/90 px-3 py-4 backdrop-blur-xl md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
               <img src={alexGraphLogo} alt="Alex Graph" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
               <div className="leading-tight">
