@@ -734,7 +734,7 @@ function Index() {
           </aside>
 
           {/* ===== Main hero area ===== */}
-          <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden">
+          <div className="relative z-10 flex min-h-screen flex-1 flex-col overflow-hidden">
             {/* Aurora background : bleu en haut → magenta en bas */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div
