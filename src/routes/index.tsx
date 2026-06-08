@@ -948,6 +948,40 @@ function Index() {
                   </div>
                 </div>
 
+                {/* Background (animated) themes */}
+                <div className="mt-6">
+                  <p className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200">
+                    <Wallpaper className="h-4 w-4 text-violet-400" />
+                    Couleur d'arrière-plan
+                  </p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {BACKGROUND_THEMES.map((b) => {
+                      const isActive = activeBgId === b.id;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => selectBackground(b.id)}
+                          className="group flex flex-col items-center gap-1.5"
+                          title={b.label}
+                        >
+                          <span
+                            className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl shadow-lg ring-2 transition group-hover:scale-105 ${
+                              isActive ? "ring-white" : "ring-transparent"
+                            }`}
+                            style={{ background: b.swatch }}
+                          >
+                            {isActive && <Check className="h-5 w-5 text-white drop-shadow" />}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{b.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+
+
                 <button
                   type="button"
                   onClick={() => selectThemeHue(null)}
