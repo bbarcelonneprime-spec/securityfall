@@ -655,6 +655,14 @@ function Index() {
       {/* User profile menu (top-right) */}
       <UserMenu session={session} onSignOut={signOut} />
 
+      {/* Admin badge — visible uniquement pour le compte administrateur */}
+      {isAdmin && (
+        <div className="fixed right-16 top-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500/90 to-yellow-500/90 px-3 py-2 text-xs font-bold text-black shadow-lg backdrop-blur">
+          <Crown className="h-3.5 w-3.5" />
+          Mode Admin
+        </div>
+      )}
+
       {/* Top-left home button (hidden on home view) */}
       {view !== "home" && (
         <button
