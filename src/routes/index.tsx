@@ -679,7 +679,9 @@ function Index() {
       <div key={view} className="view-transition">
       {view === "home" ? (
         /* ============ HOME / LANDING VIEW ============ */
-        <main className="relative flex min-h-screen overflow-hidden bg-[#0a0a14] text-slate-100">
+        <main className="relative flex min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
+          {/* Animated particle background (antigravity) */}
+          <AuroraBackground />
           {/* ===== Sidebar (style Lovable) ===== */}
           <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16] px-3 py-4 md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
