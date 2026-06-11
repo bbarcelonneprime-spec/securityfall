@@ -83,8 +83,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "alex ia" },
       { name: "twitter:description", content: "alex ia est une IA complétement gratuit  qui a beaucoup de fonctionnalité" },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/CusaqxEXL6RLV4IN2Wiv3mQ4n5s1/social-images/social-1780160561982-Design_sans_titre_(2).webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/CusaqxEXL6RLV4IN2Wiv3mQ4n5s1/social-images/social-1780160561982-Design_sans_titre_(2).webp" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/CusaqxEXL6RLV4IN2Wiv3mQ4n5s1/social-images/social-1781199189147-Capture_d_écran_2026-06-10_111130.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/CusaqxEXL6RLV4IN2Wiv3mQ4n5s1/social-images/social-1781199189147-Capture_d_écran_2026-06-10_111130.webp" },
     ],
     links: [
       {
