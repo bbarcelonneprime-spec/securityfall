@@ -17,6 +17,8 @@ import {
   saveAlexImage, deleteAlexImage as deleteAlexImageFn,
 } from "../lib/alex-store.functions";
 import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
+import { removeBackground } from "../lib/background.functions";
+import { ALEX_MODELS, DEFAULT_ALEX_MODEL, getAlexModel } from "../lib/alex-models";
 import {
   THEME_PRESETS, applyThemeHue, resetTheme, saveThemeHue, loadThemeHue, hexToOklchHue,
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
