@@ -1421,6 +1421,112 @@ function Index() {
             )}
           </div>
         </main>
+      ) : view === "bgremove" ? (
+        /* ============ RETIRER L'ARRIÈRE-PLAN ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:py-16">
+            <button
+              type="button"
+              onClick={goHome}
+              className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
+            >
+              <Home className="h-4 w-4" /> Accueil
+            </button>
+
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-lg">
+                <Scissors className="h-7 w-7" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Retirer l'arrière-plan
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-slate-400">
+                Importe une photo et obtiens instantanément un PNG au fond transparent, prêt à télécharger.
+              </p>
+            </header>
+
+            <input
+              ref={bgFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBgFile}
+              className="hidden"
+            />
+
+            {!bgOriginal && !bgLoading && (
+              <button
+                type="button"
+                onClick={() => bgFileInputRef.current?.click()}
+                className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-white/15 bg-white/5 px-6 py-16 text-center backdrop-blur-xl transition hover:border-sky-400/50 hover:bg-white/10"
+              >
+                <UploadCloud className="h-10 w-10 text-sky-300" />
+                <span className="text-sm font-medium text-slate-100">Clique pour importer une image</span>
+                <span className="text-xs text-slate-400">JPG, PNG — jusqu'à 12 Mo</span>
+              </button>
+            )}
+
+            {bgError && (
+              <div className="mx-auto mt-6 flex max-w-lg items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" /> {bgError}
+              </div>
+            )}
+
+            {(bgOriginal || bgLoading) && (
+              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+                  <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Original</p>
+                  {bgOriginal && (
+                    <img src={bgOriginal} alt="Image d'origine" className="mx-auto max-h-72 w-auto rounded-xl object-contain" />
+                  )}
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+                  <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Sans arrière-plan</p>
+                  <div
+                    className="flex min-h-[12rem] items-center justify-center rounded-xl"
+                    style={{
+                      backgroundColor: "#ffffff",
+                      backgroundImage:
+                        "linear-gradient(45deg,#e5e7eb 25%,transparent 25%),linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e7eb 75%),linear-gradient(-45deg,transparent 75%,#e5e7eb 75%)",
+                      backgroundSize: "18px 18px",
+                      backgroundPosition: "0 0,0 9px,9px -9px,-9px 0",
+                    }}
+                  >
+                    {bgLoading ? (
+                      <div className="flex flex-col items-center gap-2 py-8 text-slate-600">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <span className="text-xs">Traitement en cours…</span>
+                      </div>
+                    ) : bgResult ? (
+                      <img src={bgResult} alt="Sans arrière-plan" className="max-h-72 w-auto object-contain" />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(bgOriginal || bgResult) && !bgLoading && (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                {bgResult && (
+                  <a
+                    href={bgResult}
+                    download="sans-arriere-plan.png"
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-sky-500 to-cyan-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02]"
+                  >
+                    <Download className="h-4 w-4" /> Télécharger le PNG
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => bgFileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
+                >
+                  <UploadCloud className="h-4 w-4" /> Autre image
+                </button>
+              </div>
+            )}
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
