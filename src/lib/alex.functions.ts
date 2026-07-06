@@ -23,39 +23,21 @@ const DEEP_RESEARCH_PROMPT = `\n\nMode **Recherche approfondie** activé. Produi
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export const chatWithAlex = createServerFn({ method: "POST" })
-  .inputValidator((data: { messages: ChatMessage[]; persona?: string; deepResearch?: boolean }) => {
+  .inputValidator((data: { messages: ChatMessage[]; persona?: string; deepResearch?: boolean; model?: string }) => {
     if (!Array.isArray(data?.messages)) throw new Error("Messages invalides.");
     const persona = typeof data.persona === "string" && data.persona in PERSONAS ? data.persona : "general";
-    return { messages: data.messages, persona, deepResearch: Boolean(data.deepResearch) };
+    const model = typeof data.model === "string" && data.model ? data.model : DEFAULT_ALEX_MODEL;
+    return { messages: data.messages, persona, deepResearch: Boolean(data.deepResearch), model };
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("LOVABLE_API_KEY manquante.");
-
     const systemPrompt =
       BASE_PROMPT + (PERSONAS[data.persona] ?? "") + (data.deepResearch ? DEEP_RESEARCH_PROMPT : "");
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...data.messages.map((m) => ({ role: m.role, content: m.content })),
-        ],
-      }),
-    });
-
-    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
-    if (res.status === 402) throw new Error("Crédits IA épuisés.");
-    if (!res.ok) {
-      console.error("Alex AI error:", res.status, await res.text());
-      throw new Error("Erreur du service Alex IA.");
-    }
-
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    return { content: json.choices?.[0]?.message?.content ?? "" };
+    const content = await runChat(data.model, [
+      { role: "system", content: systemPrompt },
+      ...data.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ]);
+    return { content };
   });
 
 export const generateAlexImage = createServerFn({ method: "POST" })
