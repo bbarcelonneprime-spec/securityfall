@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { runChat } from "./ai-chat.server";
 
 const CHATBOT_SYSTEM_PROMPT = `Tu es un expert en cybersécurité et protection de la vie privée en ligne.
 Tu réponds aux questions des utilisateurs de manière claire, pédagogique et rassurante.
