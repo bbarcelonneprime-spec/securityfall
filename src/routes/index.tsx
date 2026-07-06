@@ -141,6 +141,7 @@ function Index() {
   const deleteConvFn = useServerFn(deleteAlexConversationFn);
   const saveImageFn = useServerFn(saveAlexImage);
   const deleteImageFn = useServerFn(deleteAlexImageFn);
+  const removeBgFn = useServerFn(removeBackground);
 
   // Auth gate
   const [session, setSession] = useState<Session | null>(null);
