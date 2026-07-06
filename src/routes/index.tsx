@@ -343,7 +343,16 @@ function Index() {
   const [alexImageMode, setAlexImageMode] = useState(false);
   const [alexDeepResearch, setAlexDeepResearch] = useState(false);
   const [alexPersona, setAlexPersona] = useState<string>("general");
+  const [alexModel, setAlexModel] = useState<string>(DEFAULT_ALEX_MODEL);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [alexError, setAlexError] = useState<string | null>(null);
+
+  // Suppression d'arrière-plan (remove.bg)
+  const [bgOriginal, setBgOriginal] = useState<string | null>(null);
+  const [bgResult, setBgResult] = useState<string | null>(null);
+  const [bgLoading, setBgLoading] = useState(false);
+  const [bgError, setBgError] = useState<string | null>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
   const alexEndRef = useRef<HTMLDivElement>(null);
   const alexFileInputRef = useRef<HTMLInputElement>(null);
 
