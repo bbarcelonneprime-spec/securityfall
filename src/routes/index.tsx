@@ -888,6 +888,18 @@ function Index() {
                   <span className="text-sm font-semibold text-white">Sécurité e-mail</span>
                   <span className="text-xs text-slate-400">Diagnostic & prévention</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={goToBgRemove}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-sky-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-lg">
+                    <Scissors className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Retirer l'arrière-plan</span>
+                  <span className="text-xs text-slate-400">Photo → PNG transparent</span>
+                </button>
               </div>
 
               {/* Theme customizer trigger */}
