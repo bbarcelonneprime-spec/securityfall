@@ -852,7 +852,7 @@ function Index() {
               </form>
 
               {/* Tool cards */}
-              <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+              <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <button
                   type="button"
                   onClick={goToAlex}
