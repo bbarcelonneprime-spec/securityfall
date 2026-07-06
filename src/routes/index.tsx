@@ -747,6 +747,9 @@ function Index() {
               <button type="button" onClick={goToEmail} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <ShieldCheck className="h-4 w-4" /> Sécurité e-mail
               </button>
+              <button type="button" onClick={goToBgRemove} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Scissors className="h-4 w-4" /> Retirer l'arrière-plan
+              </button>
               <button type="button" onClick={() => setThemeOpen(true)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <Palette className="h-4 w-4" /> Thème & couleurs
               </button>
