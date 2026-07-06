@@ -6,6 +6,7 @@ import {
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
   AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
+  Scissors, UploadCloud, ChevronDown, Cpu, Zap,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
@@ -16,6 +17,8 @@ import {
   saveAlexImage, deleteAlexImage as deleteAlexImageFn,
 } from "../lib/alex-store.functions";
 import { synthesizeVoice, transcribeVoice, VOICE_OPTIONS } from "../lib/voice.functions";
+import { removeBackground } from "../lib/background.functions";
+import { ALEX_MODELS, DEFAULT_ALEX_MODEL, getAlexModel } from "../lib/alex-models";
 import {
   THEME_PRESETS, applyThemeHue, resetTheme, saveThemeHue, loadThemeHue, hexToOklchHue,
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
@@ -138,6 +141,7 @@ function Index() {
   const deleteConvFn = useServerFn(deleteAlexConversationFn);
   const saveImageFn = useServerFn(saveAlexImage);
   const deleteImageFn = useServerFn(deleteAlexImageFn);
+  const removeBgFn = useServerFn(removeBackground);
 
   // Auth gate
   const [session, setSession] = useState<Session | null>(null);
@@ -155,7 +159,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -339,7 +343,16 @@ function Index() {
   const [alexImageMode, setAlexImageMode] = useState(false);
   const [alexDeepResearch, setAlexDeepResearch] = useState(false);
   const [alexPersona, setAlexPersona] = useState<string>("general");
+  const [alexModel, setAlexModel] = useState<string>(DEFAULT_ALEX_MODEL);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [alexError, setAlexError] = useState<string | null>(null);
+
+  // Suppression d'arrière-plan (remove.bg)
+  const [bgOriginal, setBgOriginal] = useState<string | null>(null);
+  const [bgResult, setBgResult] = useState<string | null>(null);
+  const [bgLoading, setBgLoading] = useState(false);
+  const [bgError, setBgError] = useState<string | null>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
   const alexEndRef = useRef<HTMLDivElement>(null);
   const alexFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -480,7 +493,7 @@ function Index() {
         const historyForApi = newMessages
           .filter((m) => !m.imageUrl)
           .map((m) => ({ role: m.role, content: m.content }));
-        const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch } });
+        const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch, model: alexModel } });
         updateConv(conv.id, (c) => ({
           ...c,
           messages: [...c.messages, { role: "assistant", content: res.content }],
@@ -512,7 +525,7 @@ function Index() {
       const historyForApi = newMessages
         .filter((m) => !m.imageUrl)
         .map((m) => ({ role: m.role, content: m.content }));
-      const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch } });
+      const res = await alexFn({ data: { messages: historyForApi, persona: alexPersona, deepResearch: alexDeepResearch, model: alexModel } });
       updateConv(conv.id, (c) => ({
         ...c,
         messages: [...c.messages, { role: "assistant", content: res.content }],
@@ -628,6 +641,35 @@ function Index() {
 
   const goToLibrary = () => setView("library");
 
+  const goToBgRemove = () => setView("bgremove");
+
+  const handleBgFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setBgError("Choisis un fichier image (JPG, PNG…).");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setBgError("Image trop volumineuse (max 12 Mo).");
+      return;
+    }
+    setBgError(null);
+    setBgResult(null);
+    setBgLoading(true);
+    try {
+      const dataUrl = await blobToBase64(file);
+      setBgOriginal(dataUrl);
+      const res = await removeBgFn({ data: { imageBase64: dataUrl } });
+      setBgResult(res.imageUrl);
+    } catch (err) {
+      setBgError(err instanceof Error ? err.message : "Erreur lors du traitement.");
+    } finally {
+      setBgLoading(false);
+    }
+  };
+
   // Connexion obligatoire pour accéder au site
   if (!authChecked) {
     return (
@@ -704,6 +746,9 @@ function Index() {
               </button>
               <button type="button" onClick={goToEmail} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <ShieldCheck className="h-4 w-4" /> Sécurité e-mail
+              </button>
+              <button type="button" onClick={goToBgRemove} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Scissors className="h-4 w-4" /> Retirer l'arrière-plan
               </button>
               <button type="button" onClick={() => setThemeOpen(true)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <Palette className="h-4 w-4" /> Thème & couleurs
@@ -807,7 +852,7 @@ function Index() {
               </form>
 
               {/* Tool cards */}
-              <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+              <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <button
                   type="button"
                   onClick={goToAlex}
@@ -842,6 +887,18 @@ function Index() {
                   </span>
                   <span className="text-sm font-semibold text-white">Sécurité e-mail</span>
                   <span className="text-xs text-slate-400">Diagnostic & prévention</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToBgRemove}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-sky-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-lg">
+                    <Scissors className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Retirer l'arrière-plan</span>
+                  <span className="text-xs text-slate-400">Photo → PNG transparent</span>
                 </button>
               </div>
 
@@ -1364,6 +1421,112 @@ function Index() {
             )}
           </div>
         </main>
+      ) : view === "bgremove" ? (
+        /* ============ RETIRER L'ARRIÈRE-PLAN ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:py-16">
+            <button
+              type="button"
+              onClick={goHome}
+              className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
+            >
+              <Home className="h-4 w-4" /> Accueil
+            </button>
+
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-lg">
+                <Scissors className="h-7 w-7" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Retirer l'arrière-plan
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-slate-400">
+                Importe une photo et obtiens instantanément un PNG au fond transparent, prêt à télécharger.
+              </p>
+            </header>
+
+            <input
+              ref={bgFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBgFile}
+              className="hidden"
+            />
+
+            {!bgOriginal && !bgLoading && (
+              <button
+                type="button"
+                onClick={() => bgFileInputRef.current?.click()}
+                className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-white/15 bg-white/5 px-6 py-16 text-center backdrop-blur-xl transition hover:border-sky-400/50 hover:bg-white/10"
+              >
+                <UploadCloud className="h-10 w-10 text-sky-300" />
+                <span className="text-sm font-medium text-slate-100">Clique pour importer une image</span>
+                <span className="text-xs text-slate-400">JPG, PNG — jusqu'à 12 Mo</span>
+              </button>
+            )}
+
+            {bgError && (
+              <div className="mx-auto mt-6 flex max-w-lg items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" /> {bgError}
+              </div>
+            )}
+
+            {(bgOriginal || bgLoading) && (
+              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+                  <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Original</p>
+                  {bgOriginal && (
+                    <img src={bgOriginal} alt="Image d'origine" className="mx-auto max-h-72 w-auto rounded-xl object-contain" />
+                  )}
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+                  <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Sans arrière-plan</p>
+                  <div
+                    className="flex min-h-[12rem] items-center justify-center rounded-xl"
+                    style={{
+                      backgroundColor: "#ffffff",
+                      backgroundImage:
+                        "linear-gradient(45deg,#e5e7eb 25%,transparent 25%),linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e7eb 75%),linear-gradient(-45deg,transparent 75%,#e5e7eb 75%)",
+                      backgroundSize: "18px 18px",
+                      backgroundPosition: "0 0,0 9px,9px -9px,-9px 0",
+                    }}
+                  >
+                    {bgLoading ? (
+                      <div className="flex flex-col items-center gap-2 py-8 text-slate-600">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <span className="text-xs">Traitement en cours…</span>
+                      </div>
+                    ) : bgResult ? (
+                      <img src={bgResult} alt="Sans arrière-plan" className="max-h-72 w-auto object-contain" />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(bgOriginal || bgResult) && !bgLoading && (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                {bgResult && (
+                  <a
+                    href={bgResult}
+                    download="sans-arriere-plan.png"
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-sky-500 to-cyan-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02]"
+                  >
+                    <Download className="h-4 w-4" /> Télécharger le PNG
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => bgFileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
+                >
+                  <UploadCloud className="h-4 w-4" /> Autre image
+                </button>
+              </div>
+            )}
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
@@ -1471,7 +1634,54 @@ function Index() {
             <div className="flex items-center justify-between px-6 py-4 pl-20 sm:pl-6">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-medium text-slate-200">Alex</span>
-                <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs text-slate-400">2.5 Flash</span>
+                {/* Sélecteur de modèle (façon Mammouth IA) */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setModelMenuOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200 transition hover:bg-white/10"
+                    title="Changer de modèle IA"
+                  >
+                    <Cpu className="h-3.5 w-3.5 text-violet-300" />
+                    {getAlexModel(alexModel).label}
+                    {getAlexModel(alexModel).fast && <Zap className="h-3 w-3 text-amber-300" />}
+                    <ChevronDown className={`h-3.5 w-3.5 transition ${modelMenuOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {modelMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setModelMenuOpen(false)} />
+                      <div className="absolute left-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-white/10 bg-[#141a2e] p-1.5 shadow-2xl shadow-black/50">
+                        <p className="px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          Choisis ton modèle IA
+                        </p>
+                        {ALEX_MODELS.map((m) => {
+                          const active = m.id === alexModel;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => { setAlexModel(m.id); setModelMenuOpen(false); }}
+                              className={`flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
+                                active ? "bg-violet-600/25 ring-1 ring-violet-400/40" : "hover:bg-white/5"
+                              }`}
+                            >
+                              <span className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg ${m.fast ? "bg-gradient-to-br from-amber-500 to-orange-600" : "bg-gradient-to-br from-indigo-500 to-violet-600"} text-white`}>
+                                {m.fast ? <Zap className="h-3.5 w-3.5" /> : <Cpu className="h-3.5 w-3.5" />}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="flex items-center gap-1.5 text-sm font-medium text-slate-100">
+                                  {m.label}
+                                  {active && <Check className="h-3.5 w-3.5 text-violet-300" />}
+                                </span>
+                                <span className="block text-xs text-slate-400">{m.desc}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1584,9 +1794,15 @@ function Index() {
                     className="flex-1 bg-transparent px-1 py-1.5 text-sm text-slate-100 placeholder-slate-500 outline-none"
                   />
                   <span className="hidden h-2 w-2 rounded-full bg-violet-400 sm:block" />
-                  <span className="hidden items-center gap-1 rounded-full px-2 py-1 text-xs text-slate-400 sm:flex">
-                    Flash <span className="text-slate-600">▾</span>
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setModelMenuOpen((v) => !v)}
+                    className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300 transition hover:bg-white/10 sm:flex"
+                    title="Changer de modèle IA"
+                  >
+                    {getAlexModel(alexModel).badge}
+                    <ChevronDown className="h-3 w-3 text-slate-500" />
+                  </button>
                   <button
                     type="button"
                     onClick={toggleAlexRecording}
