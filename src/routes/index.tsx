@@ -1673,9 +1673,15 @@ function Index() {
                     className="flex-1 bg-transparent px-1 py-1.5 text-sm text-slate-100 placeholder-slate-500 outline-none"
                   />
                   <span className="hidden h-2 w-2 rounded-full bg-violet-400 sm:block" />
-                  <span className="hidden items-center gap-1 rounded-full px-2 py-1 text-xs text-slate-400 sm:flex">
-                    Flash <span className="text-slate-600">▾</span>
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setModelMenuOpen((v) => !v)}
+                    className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300 transition hover:bg-white/10 sm:flex"
+                    title="Changer de modèle IA"
+                  >
+                    {getAlexModel(alexModel).badge}
+                    <ChevronDown className="h-3 w-3 text-slate-500" />
+                  </button>
                   <button
                     type="button"
                     onClick={toggleAlexRecording}
