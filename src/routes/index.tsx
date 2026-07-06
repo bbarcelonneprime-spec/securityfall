@@ -641,6 +641,35 @@ function Index() {
 
   const goToLibrary = () => setView("library");
 
+  const goToBgRemove = () => setView("bgremove");
+
+  const handleBgFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setBgError("Choisis un fichier image (JPG, PNG…).");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setBgError("Image trop volumineuse (max 12 Mo).");
+      return;
+    }
+    setBgError(null);
+    setBgResult(null);
+    setBgLoading(true);
+    try {
+      const dataUrl = await blobToBase64(file);
+      setBgOriginal(dataUrl);
+      const res = await removeBgFn({ data: { imageBase64: dataUrl } });
+      setBgResult(res.imageUrl);
+    } catch (err) {
+      setBgError(err instanceof Error ? err.message : "Erreur lors du traitement.");
+    } finally {
+      setBgLoading(false);
+    }
+  };
+
   // Connexion obligatoire pour accéder au site
   if (!authChecked) {
     return (
