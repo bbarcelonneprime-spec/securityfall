@@ -1700,7 +1700,7 @@ function Index() {
                   {currentConv.messages.map((m, i) => (
                     <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                       <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-white" : "bg-white/10"}`}>
-                        {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-white" />}
+                        {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" /> : <User className="h-4 w-4 text-white" />}
                       </div>
                       <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-white/5 text-slate-100 backdrop-blur" : "rounded-tr-none bg-gradient-to-br from-indigo-600 to-violet-600 text-white"}`}>
                         <div className="prose prose-invert prose-sm max-w-none">{renderMarkdownDark(m.content)}</div>
