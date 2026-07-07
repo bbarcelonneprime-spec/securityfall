@@ -57,53 +57,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-function renderMarkdown(md: string) {
-  const lines = md.split("\n");
-  const out: Array<React.ReactNode> = [];
-  let listBuffer: string[] = [];
-  const flushList = () => {
-    if (listBuffer.length) {
-      out.push(
-        <ul key={`ul-${out.length}`} className="my-3 list-disc space-y-1 pl-6 text-slate-700">
-          {listBuffer.map((l, i) => (
-            <li key={i} dangerouslySetInnerHTML={{ __html: inline(l) }} />
-          ))}
-        </ul>,
-      );
-      listBuffer = [];
-    }
-  };
-  const inline = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/`([^`]+)`/g, '<code class="rounded bg-slate-100 px-1 py-0.5 text-sm">$1</code>');
-
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-    if (/^#{3}\s+/.test(line)) {
-      flushList();
-      out.push(<h3 key={out.length} className="mt-5 text-lg font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{3}\s+/, "")) }} />);
-    } else if (/^#{2}\s+/.test(line)) {
-      flushList();
-      out.push(<h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{2}\s+/, "")) }} />);
-    } else if (/^#\s+/.test(line)) {
-      flushList();
-      out.push(<h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#\s+/, "")) }} />);
-    } else if (/^\s*[-*]\s+/.test(line)) {
-      listBuffer.push(line.replace(/^\s*[-*]\s+/, ""));
-    } else if (line.trim() === "") {
-      flushList();
-    } else {
-      flushList();
-      out.push(<p key={out.length} className="my-2 leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: inline(line) }} />);
-    }
-  }
-  flushList();
-  return out;
-}
+// (le rendu Markdown clair a été remplacé par renderMarkdownDark, thème sombre unifié)
 
 type AlexMsg = { role: "user" | "assistant"; content: string; imageUrl?: string };
 type AlexConversation = { id: string; title: string; messages: AlexMsg[]; createdAt: number };
