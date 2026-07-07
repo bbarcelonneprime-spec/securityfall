@@ -1096,28 +1096,29 @@ function Index() {
           )}
         </main>
       ) : view === "email" ? (
-        <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-          <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-3xl px-4 py-16 sm:py-20">
             <header className="mb-10 text-center">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-900/40">
                 <ShieldCheck className="h-7 w-7" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
                 Analyseur de sécurité e-mail
               </h1>
-              <p className="mx-auto mt-3 max-w-xl text-slate-600">
+              <p className="mx-auto mt-3 max-w-xl text-slate-400">
                 Obtiens un diagnostic pédagogique et 3 conseils concrets pour sécuriser ton adresse
                 e-mail, sans jamais transmettre ton mot de passe.
               </p>
             </header>
 
-            <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-800">
+            <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-6">
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">
                 Ton adresse e-mail
               </label>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="email"
                     type="email"
@@ -1127,13 +1128,13 @@ function Index() {
                     placeholder="prenom.nom@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full rounded-lg border border-white/10 bg-[#1a2138]/80 py-2.5 pl-9 pr-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading || !email}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-900/30 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Analyse…</>) : ("Analyser")}
                 </button>
@@ -1144,39 +1145,81 @@ function Index() {
             </form>
 
             {error && (
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <p>{error}</p>
               </div>
             )}
 
             {result && (
-              <section id="diagnostic-result" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <section id="diagnostic-result" className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
                     <ShieldCheck className="h-4 w-4" />
                     Diagnostic de sécurité
                   </div>
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="no-print inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Exporter en PDF
                   </button>
                 </div>
                 <p className="mb-4 text-xs text-slate-500">
-                  Analyse pour <span className="font-medium text-slate-700">{email}</span>
+                  Analyse pour <span className="font-medium text-slate-300">{email}</span>
                 </p>
-                <article className="prose prose-slate max-w-none">{renderMarkdown(result)}</article>
+                <article className="prose prose-invert max-w-none">{renderMarkdownDark(result)}</article>
               </section>
             )}
 
-            <footer className="mt-12 text-center text-xs text-slate-400">
+            {emailHistory.length > 0 && (
+              <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <MessagesSquare className="h-4 w-4" />
+                    Historique des analyses
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearEmailHistory}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Effacer
+                  </button>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {emailHistory.map((scan) => (
+                    <li key={scan.id}>
+                      <button
+                        type="button"
+                        onClick={() => openEmailScan(scan)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-[#141a2e]/70 px-4 py-3 text-left transition hover:border-violet-400/30 hover:bg-white/10"
+                      >
+                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-600/30 text-indigo-200">
+                          <Mail className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-slate-100">{scan.email}</span>
+                          <span className="block text-xs text-slate-500">
+                            {new Date(scan.createdAt).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                          </span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 flex-shrink-0 text-slate-500" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <footer className="mt-12 text-center text-xs text-slate-500">
               Conseils éducatifs générés par IA. Ne remplace pas un audit de sécurité professionnel.
             </footer>
           </div>
+
 
           {/* Cybersecurity floating chatbot (only on email view) */}
           <button
