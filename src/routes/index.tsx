@@ -1833,7 +1833,7 @@ function Index() {
                 <input
                   ref={alexFileInputRef}
                   type="file"
-                  accept=".pdf,.txt,.md,.markdown,.csv,.json,.log,.tsv,.html,.xml,.rtf,text/*,application/pdf"
+                  accept="image/*,video/*,.pdf,.txt,.md,.markdown,.csv,.json,.log,.tsv,.html,.xml,.rtf,text/*,application/pdf"
                   onChange={handleAlexFile}
                   className="hidden"
                 />
