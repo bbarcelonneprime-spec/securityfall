@@ -705,16 +705,16 @@ function Index() {
         </div>
       )}
 
-      {/* Top-left home button (hidden on home view) */}
+      {/* Top-left home button (hidden on home view) — discret & raffiné */}
       {view !== "home" && (
         <button
           type="button"
           onClick={goHome}
-          className="fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
+          className="group fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10 hover:text-white"
           aria-label="Retour à l'accueil"
         >
-          <Home className="h-4 w-4" />
-          Accueil
+          <Home className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+          <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-[5rem] group-hover:opacity-100">Accueil</span>
         </button>
       )}
 
