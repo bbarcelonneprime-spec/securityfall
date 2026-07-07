@@ -28,8 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
-import alexLogo from "@/assets/alex-logo.jpg";
-import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
+import alexLogo from "@/assets/alex-ia-logo.png";
+import alexGraphLogo from "@/assets/alex-ia-logo.png";
 
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
