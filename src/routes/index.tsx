@@ -11,7 +11,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
-import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import { chatWithAlex, generateAlexImage, analyzeAlexFile, describeAlexImage } from "../lib/alex.functions";
 import {
   fetchAlexData, upsertAlexConversation, deleteAlexConversation as deleteAlexConversationFn,
   saveAlexImage, deleteAlexImage as deleteAlexImageFn,
