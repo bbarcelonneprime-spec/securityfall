@@ -336,6 +336,39 @@ function Index() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Historique des e-mails analysés (persistant, par appareil)
+  type EmailScan = { id: string; email: string; content: string; createdAt: number };
+  const EMAIL_HISTORY_KEY = "alex_email_history_v1";
+  const [emailHistory, setEmailHistory] = useState<EmailScan[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(EMAIL_HISTORY_KEY);
+      if (raw) setEmailHistory(JSON.parse(raw) as EmailScan[]);
+    } catch { /* ignore */ }
+  }, []);
+
+  const saveEmailScan = (scan: EmailScan) => {
+    setEmailHistory((prev) => {
+      const next = [scan, ...prev.filter((s) => s.email !== scan.email)].slice(0, 20);
+      try { localStorage.setItem(EMAIL_HISTORY_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const openEmailScan = (scan: EmailScan) => {
+    setEmail(scan.email);
+    setResult(scan.content);
+    setError(null);
+  };
+
+  const clearEmailHistory = () => {
+    setEmailHistory([]);
+    try { localStorage.removeItem(EMAIL_HISTORY_KEY); } catch { /* ignore */ }
+  };
+
+
   // Cybersecurity chatbot state (existing floating)
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
