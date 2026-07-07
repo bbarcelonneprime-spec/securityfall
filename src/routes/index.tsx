@@ -662,6 +662,7 @@ function Index() {
     try {
       const res = await analyze({ data: { email } });
       setResult(res.content);
+      saveEmailScan({ id: `scan-${Date.now()}`, email: email.trim(), content: res.content, createdAt: Date.now() });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
