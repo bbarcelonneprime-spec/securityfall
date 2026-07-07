@@ -431,17 +431,9 @@ function Index() {
   }, [currentConv?.messages, currentConv?.title, dataLoaded]);
 
   const newAlexConversation = () => {
-    const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const conv: AlexConversation = {
-      id,
-      title: "Nouvelle conversation",
-      messages: [
-        { role: "assistant", content: "Salut ! Je suis **Alex IA**, ton assistant IA généraliste. Je peux discuter de tout, t'aider à écrire, coder, réfléchir… et même générer des images. Comment puis-je t'aider ?" },
-      ],
-      createdAt: Date.now(),
-    };
+    const conv = makeConversation();
     setAlexConvs((prev) => [conv, ...prev]);
-    setAlexCurrentId(id);
+    setAlexCurrentId(conv.id);
     setAlexError(null);
   };
 
