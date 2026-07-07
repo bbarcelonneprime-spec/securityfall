@@ -380,24 +380,28 @@ function Index() {
       try {
         const data = await fetchDataFn();
         if (cancelled) return;
-        setAlexConvs(data.conversations);
         setAlexImages(data.images);
-        if (data.conversations.length > 0) setAlexCurrentId(data.conversations[0].id);
         // Migration unique des conversations locales vers le cloud
         const local = loadAlexConversations();
+        let saved = data.conversations;
         if (data.conversations.length === 0 && local.length > 0) {
-          setAlexConvs(local);
-          setAlexCurrentId(local[0].id);
+          saved = local;
           for (const c of local) {
             void upsertConvFn({ data: { id: c.id, title: c.title, messages: c.messages, createdAt: c.createdAt } }).catch(() => {});
           }
           saveAlexConversations([]);
         }
+        // Style Gemini : à chaque visite, une nouvelle conversation démarre et
+        // les anciennes restent sauvegardées dans l'historique.
+        const fresh = makeConversation();
+        setAlexConvs([fresh, ...saved]);
+        setAlexCurrentId(fresh.id);
       } catch {
         const local = loadAlexConversations();
         if (!cancelled) {
-          setAlexConvs(local);
-          if (local.length > 0) setAlexCurrentId(local[0].id);
+          const fresh = makeConversation();
+          setAlexConvs([fresh, ...local]);
+          setAlexCurrentId(fresh.id);
         }
       } finally {
         if (!cancelled) setDataLoaded(true);
