@@ -124,3 +124,48 @@ export const analyzeAlexFile = createServerFn({ method: "POST" })
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     return { content: json.choices?.[0]?.message?.content ?? "" };
   });
+
+// Analyse d'image (vision) — l'utilisateur importe une image dans le chat.
+export const describeAlexImage = createServerFn({ method: "POST" })
+  .inputValidator((data: { dataUrl: string; instruction?: string }) => {
+    if (!data?.dataUrl || typeof data.dataUrl !== "string" || !data.dataUrl.startsWith("data:image/")) {
+      throw new Error("Image invalide.");
+    }
+    const instruction =
+      typeof data.instruction === "string" && data.instruction.trim()
+        ? data.instruction.trim().slice(0, 2000)
+        : "Décris cette image en détail et réponds à toute question implicite.";
+    return { dataUrl: data.dataUrl, instruction };
+  })
+  .handler(async ({ data }) => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY manquante.");
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: BASE_PROMPT + `\n\nTu analyses une image fournie par l'utilisateur. Sois précis et structuré.` },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: data.instruction },
+              { type: "image_url", image_url: { url: data.dataUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
+    if (res.status === 402) throw new Error("Crédits IA épuisés.");
+    if (!res.ok) {
+      console.error("Image analysis error:", res.status, await res.text());
+      throw new Error("Erreur d'analyse de l'image.");
+    }
+
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    return { content: json.choices?.[0]?.message?.content ?? "" };
+  });
