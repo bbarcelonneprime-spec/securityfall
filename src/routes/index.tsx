@@ -109,6 +109,17 @@ type AlexMsg = { role: "user" | "assistant"; content: string; imageUrl?: string 
 type AlexConversation = { id: string; title: string; messages: AlexMsg[]; createdAt: number };
 
 const ALEX_STORAGE_KEY = "alex_ia_conversations_v1";
+const ALEX_GREETING =
+  "Salut ! Je suis **Alex IA**, ton assistant IA généraliste. Je peux discuter de tout, t'aider à écrire, coder, réfléchir… et même générer des images. Comment puis-je t'aider ?";
+
+function makeConversation(): AlexConversation {
+  return {
+    id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: "Nouvelle conversation",
+    messages: [{ role: "assistant", content: ALEX_GREETING }],
+    createdAt: Date.now(),
+  };
+}
 
 function loadAlexConversations(): AlexConversation[] {
   if (typeof window === "undefined") return [];
