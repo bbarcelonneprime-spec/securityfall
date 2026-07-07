@@ -557,28 +557,60 @@ function Index() {
     setAlexInput("");
     setAlexError(null);
     setAlexLoading(true);
-    updateConv(conv.id, (c) => ({
-      ...c,
-      messages: [
-        ...c.messages,
-        { role: "user", content: `📎 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse ce document."}` },
-      ],
-      title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
-    }));
-    try {
-      const { fileName, content } = await extractFileText(file);
-      if (!content.trim()) throw new Error("Aucun texte extractible dans ce fichier.");
-      const res = await alexFileFn({ data: { fileName, content, instruction: instruction || undefined } });
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+
+    if (isVideo) {
       updateConv(conv.id, (c) => ({
         ...c,
-        messages: [...c.messages, { role: "assistant", content: res.content }],
+        messages: [...c.messages, { role: "user", content: `🎬 **${file.name}**` }],
       }));
+      setAlexError("L'analyse de vidéo n'est pas encore disponible. Importe une image, un PDF ou un texte.");
+      setAlexLoading(false);
+      return;
+    }
+
+    try {
+      if (isImage) {
+        const dataUrl = await blobToBase64(file);
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: "user", content: instruction || "Analyse cette image.", imageUrl: dataUrl },
+          ],
+          title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+        }));
+        const res = await alexImageDescribeFn({ data: { dataUrl, instruction: instruction || undefined } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      } else {
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: "user", content: `📎 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse ce document."}` },
+          ],
+          title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+        }));
+        const { fileName, content } = await extractFileText(file);
+        if (!content.trim()) throw new Error("Aucun texte extractible dans ce fichier.");
+        const res = await alexFileFn({ data: { fileName, content, instruction: instruction || undefined } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      }
     } catch (err) {
       setAlexError(err instanceof Error ? err.message : "Erreur lors de l'analyse du fichier.");
     } finally {
       setAlexLoading(false);
     }
   };
+
 
   useEffect(() => {
     alexEndRef.current?.scrollIntoView({ behavior: "smooth" });
