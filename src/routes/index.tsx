@@ -1713,7 +1713,7 @@ function Index() {
                   {alexLoading && (
                     <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white">
-                        <img src={alexLogo} alt="Alex" className="h-full w-full object-cover" />
+                        <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" />
                       </div>
                       <div className="rounded-2xl rounded-tl-none bg-white/5 px-4 py-3 backdrop-blur">
                         <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
