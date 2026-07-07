@@ -1541,7 +1541,7 @@ function Index() {
           {/* Sidebar */}
           <aside className="relative z-10 flex w-full flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:w-72 sm:border-b-0 sm:border-r">
             <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
-              <img src={alexLogo} alt="Alex Graph" className="h-9 w-9 rounded-lg object-cover ring-1 ring-white/10" />
+              <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg bg-white p-1 object-contain ring-1 ring-white/10" />
               <p className="text-base font-semibold tracking-tight">Alex IA</p>
               <button type="button" className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire">
                 <PanelLeft className="h-4 w-4" />
