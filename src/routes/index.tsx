@@ -4,14 +4,14 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
-  Telescope, Paperclip, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
+  Telescope, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
   AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
   Scissors, UploadCloud, ChevronDown, Cpu, Zap,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
-import { chatWithAlex, generateAlexImage, analyzeAlexFile } from "../lib/alex.functions";
+import { chatWithAlex, generateAlexImage, analyzeAlexFile, describeAlexImage } from "../lib/alex.functions";
 import {
   fetchAlexData, upsertAlexConversation, deleteAlexConversation as deleteAlexConversationFn,
   saveAlexImage, deleteAlexImage as deleteAlexImageFn,
@@ -28,8 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
-import alexLogo from "@/assets/alex-logo.jpg";
-import alexGraphLogo from "@/assets/alex-graph-logo.jpg";
+import alexLogo from "@/assets/alex-ia-logo.png";
+import alexGraphLogo from "@/assets/alex-ia-logo.png";
 
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
@@ -57,58 +57,23 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-function renderMarkdown(md: string) {
-  const lines = md.split("\n");
-  const out: Array<React.ReactNode> = [];
-  let listBuffer: string[] = [];
-  const flushList = () => {
-    if (listBuffer.length) {
-      out.push(
-        <ul key={`ul-${out.length}`} className="my-3 list-disc space-y-1 pl-6 text-slate-700">
-          {listBuffer.map((l, i) => (
-            <li key={i} dangerouslySetInnerHTML={{ __html: inline(l) }} />
-          ))}
-        </ul>,
-      );
-      listBuffer = [];
-    }
-  };
-  const inline = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/`([^`]+)`/g, '<code class="rounded bg-slate-100 px-1 py-0.5 text-sm">$1</code>');
-
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-    if (/^#{3}\s+/.test(line)) {
-      flushList();
-      out.push(<h3 key={out.length} className="mt-5 text-lg font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{3}\s+/, "")) }} />);
-    } else if (/^#{2}\s+/.test(line)) {
-      flushList();
-      out.push(<h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#{2}\s+/, "")) }} />);
-    } else if (/^#\s+/.test(line)) {
-      flushList();
-      out.push(<h2 key={out.length} className="mt-6 text-xl font-semibold text-slate-900" dangerouslySetInnerHTML={{ __html: inline(line.replace(/^#\s+/, "")) }} />);
-    } else if (/^\s*[-*]\s+/.test(line)) {
-      listBuffer.push(line.replace(/^\s*[-*]\s+/, ""));
-    } else if (line.trim() === "") {
-      flushList();
-    } else {
-      flushList();
-      out.push(<p key={out.length} className="my-2 leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: inline(line) }} />);
-    }
-  }
-  flushList();
-  return out;
-}
+// (le rendu Markdown clair a été remplacé par renderMarkdownDark, thème sombre unifié)
 
 type AlexMsg = { role: "user" | "assistant"; content: string; imageUrl?: string };
 type AlexConversation = { id: string; title: string; messages: AlexMsg[]; createdAt: number };
 
 const ALEX_STORAGE_KEY = "alex_ia_conversations_v1";
+const ALEX_GREETING =
+  "Salut ! Je suis **Alex IA**, ton assistant IA généraliste. Je peux discuter de tout, t'aider à écrire, coder, réfléchir… et même générer des images. Comment puis-je t'aider ?";
+
+function makeConversation(): AlexConversation {
+  return {
+    id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: "Nouvelle conversation",
+    messages: [{ role: "assistant", content: ALEX_GREETING }],
+    createdAt: Date.now(),
+  };
+}
 
 function loadAlexConversations(): AlexConversation[] {
   if (typeof window === "undefined") return [];
@@ -136,6 +101,7 @@ function Index() {
   const alexFn = useServerFn(chatWithAlex);
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
+  const alexImageDescribeFn = useServerFn(describeAlexImage);
   const fetchDataFn = useServerFn(fetchAlexData);
   const upsertConvFn = useServerFn(upsertAlexConversation);
   const deleteConvFn = useServerFn(deleteAlexConversationFn);
@@ -325,6 +291,39 @@ function Index() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Historique des e-mails analysés (persistant, par appareil)
+  type EmailScan = { id: string; email: string; content: string; createdAt: number };
+  const EMAIL_HISTORY_KEY = "alex_email_history_v1";
+  const [emailHistory, setEmailHistory] = useState<EmailScan[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(EMAIL_HISTORY_KEY);
+      if (raw) setEmailHistory(JSON.parse(raw) as EmailScan[]);
+    } catch { /* ignore */ }
+  }, []);
+
+  const saveEmailScan = (scan: EmailScan) => {
+    setEmailHistory((prev) => {
+      const next = [scan, ...prev.filter((s) => s.email !== scan.email)].slice(0, 20);
+      try { localStorage.setItem(EMAIL_HISTORY_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const openEmailScan = (scan: EmailScan) => {
+    setEmail(scan.email);
+    setResult(scan.content);
+    setError(null);
+  };
+
+  const clearEmailHistory = () => {
+    setEmailHistory([]);
+    try { localStorage.removeItem(EMAIL_HISTORY_KEY); } catch { /* ignore */ }
+  };
+
+
   // Cybersecurity chatbot state (existing floating)
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
@@ -369,24 +368,28 @@ function Index() {
       try {
         const data = await fetchDataFn();
         if (cancelled) return;
-        setAlexConvs(data.conversations);
         setAlexImages(data.images);
-        if (data.conversations.length > 0) setAlexCurrentId(data.conversations[0].id);
         // Migration unique des conversations locales vers le cloud
         const local = loadAlexConversations();
+        let saved = data.conversations;
         if (data.conversations.length === 0 && local.length > 0) {
-          setAlexConvs(local);
-          setAlexCurrentId(local[0].id);
+          saved = local;
           for (const c of local) {
             void upsertConvFn({ data: { id: c.id, title: c.title, messages: c.messages, createdAt: c.createdAt } }).catch(() => {});
           }
           saveAlexConversations([]);
         }
+        // Style Gemini : à chaque visite, une nouvelle conversation démarre et
+        // les anciennes restent sauvegardées dans l'historique.
+        const fresh = makeConversation();
+        setAlexConvs([fresh, ...saved]);
+        setAlexCurrentId(fresh.id);
       } catch {
         const local = loadAlexConversations();
         if (!cancelled) {
-          setAlexConvs(local);
-          if (local.length > 0) setAlexCurrentId(local[0].id);
+          const fresh = makeConversation();
+          setAlexConvs([fresh, ...local]);
+          setAlexCurrentId(fresh.id);
         }
       } finally {
         if (!cancelled) setDataLoaded(true);
@@ -402,6 +405,9 @@ function Index() {
   useEffect(() => {
     if (!dataLoaded || !currentConv) return;
     const conv = currentConv;
+    // N'enregistre pas les conversations vides (sans message utilisateur)
+    // pour ne pas encombrer l'historique à chaque visite.
+    if (!conv.messages.some((m) => m.role === "user")) return;
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
       void upsertConvFn({
@@ -413,17 +419,9 @@ function Index() {
   }, [currentConv?.messages, currentConv?.title, dataLoaded]);
 
   const newAlexConversation = () => {
-    const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const conv: AlexConversation = {
-      id,
-      title: "Nouvelle conversation",
-      messages: [
-        { role: "assistant", content: "Salut ! Je suis **Alex IA**, ton assistant IA généraliste. Je peux discuter de tout, t'aider à écrire, coder, réfléchir… et même générer des images. Comment puis-je t'aider ?" },
-      ],
-      createdAt: Date.now(),
-    };
+    const conv = makeConversation();
     setAlexConvs((prev) => [conv, ...prev]);
-    setAlexCurrentId(id);
+    setAlexCurrentId(conv.id);
     setAlexError(null);
   };
 
@@ -559,28 +557,60 @@ function Index() {
     setAlexInput("");
     setAlexError(null);
     setAlexLoading(true);
-    updateConv(conv.id, (c) => ({
-      ...c,
-      messages: [
-        ...c.messages,
-        { role: "user", content: `📎 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse ce document."}` },
-      ],
-      title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
-    }));
-    try {
-      const { fileName, content } = await extractFileText(file);
-      if (!content.trim()) throw new Error("Aucun texte extractible dans ce fichier.");
-      const res = await alexFileFn({ data: { fileName, content, instruction: instruction || undefined } });
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+
+    if (isVideo) {
       updateConv(conv.id, (c) => ({
         ...c,
-        messages: [...c.messages, { role: "assistant", content: res.content }],
+        messages: [...c.messages, { role: "user", content: `🎬 **${file.name}**` }],
       }));
+      setAlexError("L'analyse de vidéo n'est pas encore disponible. Importe une image, un PDF ou un texte.");
+      setAlexLoading(false);
+      return;
+    }
+
+    try {
+      if (isImage) {
+        const dataUrl = await blobToBase64(file);
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: "user", content: instruction || "Analyse cette image.", imageUrl: dataUrl },
+          ],
+          title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+        }));
+        const res = await alexImageDescribeFn({ data: { dataUrl, instruction: instruction || undefined } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      } else {
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: "user", content: `📎 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse ce document."}` },
+          ],
+          title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+        }));
+        const { fileName, content } = await extractFileText(file);
+        if (!content.trim()) throw new Error("Aucun texte extractible dans ce fichier.");
+        const res = await alexFileFn({ data: { fileName, content, instruction: instruction || undefined } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      }
     } catch (err) {
       setAlexError(err instanceof Error ? err.message : "Erreur lors de l'analyse du fichier.");
     } finally {
       setAlexLoading(false);
     }
   };
+
 
   useEffect(() => {
     alexEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -619,6 +649,7 @@ function Index() {
     try {
       const res = await analyze({ data: { email } });
       setResult(res.content);
+      saveEmailScan({ id: `scan-${Date.now()}`, email: email.trim(), content: res.content, createdAt: Date.now() });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -705,16 +736,16 @@ function Index() {
         </div>
       )}
 
-      {/* Top-left home button (hidden on home view) */}
+      {/* Top-left home button (hidden on home view) — discret & raffiné */}
       {view !== "home" && (
         <button
           type="button"
           onClick={goHome}
-          className="fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
+          className="group fixed left-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10 hover:text-white"
           aria-label="Retour à l'accueil"
         >
-          <Home className="h-4 w-4" />
-          Accueil
+          <Home className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+          <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-[5rem] group-hover:opacity-100">Accueil</span>
         </button>
       )}
 
@@ -727,7 +758,7 @@ function Index() {
           {/* ===== Sidebar (style Lovable) ===== */}
           <aside className="relative z-10 hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16]/90 px-3 py-4 backdrop-blur-xl md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
-              <img src={alexGraphLogo} alt="Alex Graph" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
+              <img src={alexGraphLogo} alt="Alex IA" className="h-9 w-9 rounded-xl bg-white p-1 object-contain ring-1 ring-white/10" />
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-white">Alex IA</p>
                 <p className="text-[11px] text-slate-500">par Alex Graph</p>
@@ -1052,28 +1083,29 @@ function Index() {
           )}
         </main>
       ) : view === "email" ? (
-        <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-          <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-3xl px-4 py-16 sm:py-20">
             <header className="mb-10 text-center">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-900/40">
                 <ShieldCheck className="h-7 w-7" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
                 Analyseur de sécurité e-mail
               </h1>
-              <p className="mx-auto mt-3 max-w-xl text-slate-600">
+              <p className="mx-auto mt-3 max-w-xl text-slate-400">
                 Obtiens un diagnostic pédagogique et 3 conseils concrets pour sécuriser ton adresse
                 e-mail, sans jamais transmettre ton mot de passe.
               </p>
             </header>
 
-            <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-800">
+            <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-6">
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">
                 Ton adresse e-mail
               </label>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="email"
                     type="email"
@@ -1083,13 +1115,13 @@ function Index() {
                     placeholder="prenom.nom@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full rounded-lg border border-white/10 bg-[#1a2138]/80 py-2.5 pl-9 pr-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading || !email}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-900/30 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Analyse…</>) : ("Analyser")}
                 </button>
@@ -1100,39 +1132,81 @@ function Index() {
             </form>
 
             {error && (
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <p>{error}</p>
               </div>
             )}
 
             {result && (
-              <section id="diagnostic-result" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <section id="diagnostic-result" className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
                     <ShieldCheck className="h-4 w-4" />
                     Diagnostic de sécurité
                   </div>
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="no-print inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Exporter en PDF
                   </button>
                 </div>
                 <p className="mb-4 text-xs text-slate-500">
-                  Analyse pour <span className="font-medium text-slate-700">{email}</span>
+                  Analyse pour <span className="font-medium text-slate-300">{email}</span>
                 </p>
-                <article className="prose prose-slate max-w-none">{renderMarkdown(result)}</article>
+                <article className="prose prose-invert max-w-none">{renderMarkdownDark(result)}</article>
               </section>
             )}
 
-            <footer className="mt-12 text-center text-xs text-slate-400">
+            {emailHistory.length > 0 && (
+              <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <MessagesSquare className="h-4 w-4" />
+                    Historique des analyses
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearEmailHistory}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Effacer
+                  </button>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {emailHistory.map((scan) => (
+                    <li key={scan.id}>
+                      <button
+                        type="button"
+                        onClick={() => openEmailScan(scan)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-[#141a2e]/70 px-4 py-3 text-left transition hover:border-violet-400/30 hover:bg-white/10"
+                      >
+                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-600/30 text-indigo-200">
+                          <Mail className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-slate-100">{scan.email}</span>
+                          <span className="block text-xs text-slate-500">
+                            {new Date(scan.createdAt).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                          </span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 flex-shrink-0 text-slate-500" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <footer className="mt-12 text-center text-xs text-slate-500">
               Conseils éducatifs générés par IA. Ne remplace pas un audit de sécurité professionnel.
             </footer>
           </div>
+
 
           {/* Cybersecurity floating chatbot (only on email view) */}
           <button
@@ -1541,7 +1615,7 @@ function Index() {
           {/* Sidebar */}
           <aside className="relative z-10 flex w-full flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:w-72 sm:border-b-0 sm:border-r">
             <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
-              <img src={alexLogo} alt="Alex Graph" className="h-9 w-9 rounded-lg object-cover ring-1 ring-white/10" />
+              <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg bg-white p-1 object-contain ring-1 ring-white/10" />
               <p className="text-base font-semibold tracking-tight">Alex IA</p>
               <button type="button" className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire">
                 <PanelLeft className="h-4 w-4" />
@@ -1689,7 +1763,7 @@ function Index() {
             <div className="flex-1 overflow-y-auto px-4 sm:px-8">
               {(!currentConv || currentConv.messages.length <= 1) ? (
                 <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center pb-32 text-center">
-                  <img src={alexLogo} alt="Alex Graph" className="mb-6 h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
+                  <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl bg-white p-2 object-contain ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
                   <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-4xl font-light tracking-tight text-transparent sm:text-5xl">
                     Your move, friend!
                   </h1>
@@ -1700,7 +1774,7 @@ function Index() {
                   {currentConv.messages.map((m, i) => (
                     <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                       <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-white" : "bg-white/10"}`}>
-                        {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-white" />}
+                        {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" /> : <User className="h-4 w-4 text-white" />}
                       </div>
                       <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-white/5 text-slate-100 backdrop-blur" : "rounded-tr-none bg-gradient-to-br from-indigo-600 to-violet-600 text-white"}`}>
                         <div className="prose prose-invert prose-sm max-w-none">{renderMarkdownDark(m.content)}</div>
@@ -1713,7 +1787,7 @@ function Index() {
                   {alexLoading && (
                     <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white">
-                        <img src={alexLogo} alt="Alex" className="h-full w-full object-cover" />
+                        <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" />
                       </div>
                       <div className="rounded-2xl rounded-tl-none bg-white/5 px-4 py-3 backdrop-blur">
                         <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
@@ -1759,7 +1833,7 @@ function Index() {
                 <input
                   ref={alexFileInputRef}
                   type="file"
-                  accept=".pdf,.txt,.md,.markdown,.csv,.json,.log,.tsv,.html,.xml,.rtf,text/*,application/pdf"
+                  accept="image/*,video/*,.pdf,.txt,.md,.markdown,.csv,.json,.log,.tsv,.html,.xml,.rtf,text/*,application/pdf"
                   onChange={handleAlexFile}
                   className="hidden"
                 />
@@ -1767,24 +1841,24 @@ function Index() {
                 <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#1a2138]/90 px-3 py-2 shadow-2xl shadow-black/40 backdrop-blur-xl transition focus-within:border-violet-400/40">
                   <button
                     type="button"
+                    onClick={() => alexFileInputRef.current?.click()}
+                    disabled={alexLoading}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+                    aria-label="Importer un fichier"
+                    title="Importer une image, un PDF ou une vidéo"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setAlexImageMode((v) => !v)}
                     className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${
                       alexImageMode ? "bg-violet-600 text-white" : "text-slate-300 hover:bg-white/10"
                     }`}
-                    aria-label="Mode image"
-                    title={alexImageMode ? "Mode image activé" : "Activer le mode image"}
+                    aria-label="Mode génération d'image"
+                    title={alexImageMode ? "Génération d'image activée" : "Générer une image"}
                   >
-                    {alexImageMode ? <ImageIcon className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => alexFileInputRef.current?.click()}
-                    disabled={alexLoading}
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
-                    aria-label="Joindre un fichier"
-                    title="Analyser un fichier (PDF, texte…)"
-                  >
-                    <Paperclip className="h-4 w-4" />
+                    <ImageIcon className="h-4 w-4" />
                   </button>
                   <input
                     type="text"
