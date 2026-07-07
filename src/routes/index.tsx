@@ -101,6 +101,7 @@ function Index() {
   const alexFn = useServerFn(chatWithAlex);
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
+  const alexImageDescribeFn = useServerFn(describeAlexImage);
   const fetchDataFn = useServerFn(fetchAlexData);
   const upsertConvFn = useServerFn(upsertAlexConversation);
   const deleteConvFn = useServerFn(deleteAlexConversationFn);
