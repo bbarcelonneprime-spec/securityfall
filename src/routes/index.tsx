@@ -727,7 +727,7 @@ function Index() {
           {/* ===== Sidebar (style Lovable) ===== */}
           <aside className="relative z-10 hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16]/90 px-3 py-4 backdrop-blur-xl md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
-              <img src={alexGraphLogo} alt="Alex Graph" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
+              <img src={alexGraphLogo} alt="Alex IA" className="h-9 w-9 rounded-xl bg-white p-1 object-contain ring-1 ring-white/10" />
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-white">Alex IA</p>
                 <p className="text-[11px] text-slate-500">par Alex Graph</p>
