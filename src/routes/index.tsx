@@ -417,6 +417,9 @@ function Index() {
   useEffect(() => {
     if (!dataLoaded || !currentConv) return;
     const conv = currentConv;
+    // N'enregistre pas les conversations vides (sans message utilisateur)
+    // pour ne pas encombrer l'historique à chaque visite.
+    if (!conv.messages.some((m) => m.role === "user")) return;
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
       void upsertConvFn({
