@@ -1841,24 +1841,24 @@ function Index() {
                 <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#1a2138]/90 px-3 py-2 shadow-2xl shadow-black/40 backdrop-blur-xl transition focus-within:border-violet-400/40">
                   <button
                     type="button"
+                    onClick={() => alexFileInputRef.current?.click()}
+                    disabled={alexLoading}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+                    aria-label="Importer un fichier"
+                    title="Importer une image, un PDF ou une vidéo"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setAlexImageMode((v) => !v)}
                     className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${
                       alexImageMode ? "bg-violet-600 text-white" : "text-slate-300 hover:bg-white/10"
                     }`}
-                    aria-label="Mode image"
-                    title={alexImageMode ? "Mode image activé" : "Activer le mode image"}
+                    aria-label="Mode génération d'image"
+                    title={alexImageMode ? "Génération d'image activée" : "Générer une image"}
                   >
-                    {alexImageMode ? <ImageIcon className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => alexFileInputRef.current?.click()}
-                    disabled={alexLoading}
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
-                    aria-label="Joindre un fichier"
-                    title="Analyser un fichier (PDF, texte…)"
-                  >
-                    <Paperclip className="h-4 w-4" />
+                    <ImageIcon className="h-4 w-4" />
                   </button>
                   <input
                     type="text"
