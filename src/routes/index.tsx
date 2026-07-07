@@ -1689,7 +1689,7 @@ function Index() {
             <div className="flex-1 overflow-y-auto px-4 sm:px-8">
               {(!currentConv || currentConv.messages.length <= 1) ? (
                 <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center pb-32 text-center">
-                  <img src={alexLogo} alt="Alex Graph" className="mb-6 h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
+                  <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl bg-white p-2 object-contain ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
                   <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-4xl font-light tracking-tight text-transparent sm:text-5xl">
                     Your move, friend!
                   </h1>
