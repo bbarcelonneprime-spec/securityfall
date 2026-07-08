@@ -1024,7 +1024,20 @@ function Index() {
                   <span className="text-sm font-semibold text-white">Retirer l'arrière-plan</span>
                   <span className="text-xs text-slate-400">Photo → PNG transparent</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={goToQr}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-amber-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                    <QrCode className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">QR Code</span>
+                  <span className="text-xs text-slate-400">Lien → QR code à télécharger</span>
+                </button>
               </div>
+
 
               {/* Theme customizer trigger */}
               <button
