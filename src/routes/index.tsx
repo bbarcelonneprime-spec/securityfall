@@ -1,17 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, type FormEvent } from "react";
+import QRCode from "qrcode";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
   AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
-  Scissors, UploadCloud, ChevronDown, Cpu, Zap,
+  Scissors, UploadCloud, ChevronDown, Cpu, Zap, QrCode, Headphones, VolumeX, Link2,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
-import { chatWithAlex, generateAlexImage, analyzeAlexFile, describeAlexImage } from "../lib/alex.functions";
+import { chatWithAlex, generateAlexImage, analyzeAlexFile, describeAlexImage, describeAlexVideo } from "../lib/alex.functions";
 import {
   fetchAlexData, upsertAlexConversation, deleteAlexConversation as deleteAlexConversationFn,
   saveAlexImage, deleteAlexImage as deleteAlexImageFn,
@@ -24,6 +25,7 @@ import {
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
 } from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
+import { useVocalChat } from "@/hooks/useVocalChat";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
@@ -102,6 +104,7 @@ function Index() {
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
   const alexImageDescribeFn = useServerFn(describeAlexImage);
+  const alexVideoFn = useServerFn(describeAlexVideo);
   const fetchDataFn = useServerFn(fetchAlexData);
   const upsertConvFn = useServerFn(upsertAlexConversation);
   const deleteConvFn = useServerFn(deleteAlexConversationFn);
@@ -125,7 +128,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove" | "qr">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -346,6 +349,27 @@ function Index() {
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [alexError, setAlexError] = useState<string | null>(null);
 
+  // Chatbot : recherche de conversations + repli latéral (boutons secondaires)
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const [chatSearch, setChatSearch] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Chat vocal temps réel (style ChatGPT Voice Mode) — natif navigateur
+  const [voiceChatOn, setVoiceChatOn] = useState(false);
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
+  const lastSpokenRef = useRef(0);
+  const vocal = useVocalChat({
+    onTranscript: (text) => {
+      void submitAlexText(text);
+    },
+  });
+
+  // Générateur de QR code (lien → QR)
+  const [qrInput, setQrInput] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+
   // Suppression d'arrière-plan (remove.bg)
   const [bgOriginal, setBgOriginal] = useState<string | null>(null);
   const [bgResult, setBgResult] = useState<string | null>(null);
@@ -457,13 +481,13 @@ function Index() {
     setAlexConvs((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
   };
 
-  const sendAlexMessage = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!alexInput.trim() || alexLoading) return;
+  // Envoie un message texte à Alex (partagé par le formulaire et le chat vocal).
+  const submitAlexText = async (raw: string) => {
+    const promptText = raw.trim();
+    if (!promptText || alexLoading) return;
+    setView("alex");
     const conv = ensureCurrentConv();
-    const userMsg: AlexMsg = { role: "user", content: alexInput.trim() };
-    const promptText = alexInput.trim();
-    setAlexInput("");
+    const userMsg: AlexMsg = { role: "user", content: promptText };
     setAlexError(null);
 
     const newMessages = [...conv.messages, userMsg];
@@ -502,6 +526,14 @@ function Index() {
     } finally {
       setAlexLoading(false);
     }
+  };
+
+  const sendAlexMessage = (e: FormEvent) => {
+    e.preventDefault();
+    const text = alexInput.trim();
+    if (!text || alexLoading) return;
+    setAlexInput("");
+    void submitAlexText(text);
   };
 
   // Lance une conversation Alex IA directement depuis l'accueil (barre de prompt centrale)
@@ -562,14 +594,29 @@ function Index() {
     const isVideo = file.type.startsWith("video/");
 
     if (isVideo) {
-      updateConv(conv.id, (c) => ({
-        ...c,
-        messages: [...c.messages, { role: "user", content: `🎬 **${file.name}**` }],
-      }));
-      setAlexError("L'analyse de vidéo n'est pas encore disponible. Importe une image, un PDF ou un texte.");
-      setAlexLoading(false);
+      try {
+        const dataUrl = await blobToBase64(file);
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: "user", content: `🎬 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse cette vidéo."}` },
+          ],
+          title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+        }));
+        const res = await alexVideoFn({ data: { dataUrl, mimeType: file.type, instruction: instruction || undefined } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      } catch (err) {
+        setAlexError(err instanceof Error ? err.message : "Erreur lors de l'analyse de la vidéo.");
+      } finally {
+        setAlexLoading(false);
+      }
       return;
     }
+
 
     try {
       if (isImage) {
@@ -673,6 +720,30 @@ function Index() {
   const goToLibrary = () => setView("library");
 
   const goToBgRemove = () => setView("bgremove");
+
+  const goToQr = () => setView("qr");
+
+  // Génère un QR code (image PNG data URL) à partir d'un lien ou d'un texte.
+  const generateQr = async (e: FormEvent) => {
+    e.preventDefault();
+    const value = qrInput.trim();
+    if (!value) return;
+    setQrError(null);
+    setQrLoading(true);
+    try {
+      const dataUrl = await QRCode.toDataURL(value, {
+        width: 640,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: { dark: "#0b0f1c", light: "#ffffff" },
+      });
+      setQrDataUrl(dataUrl);
+    } catch {
+      setQrError("Impossible de générer le QR code. Vérifie le lien ou le texte.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
 
   const handleBgFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

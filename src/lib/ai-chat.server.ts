@@ -46,9 +46,60 @@ async function callLovable(model: string, messages: ChatMsg[]): Promise<string> 
   return stripThink(json.choices?.[0]?.message?.content ?? "");
 }
 
+// "Alex Base 1" — IA surpuissante : interroge plusieurs modèles en parallèle,
+// puis fusionne leurs réponses en UNE réponse finale supérieure.
+async function runSuperChat(messages: ChatMsg[]): Promise<string> {
+  const drafts = await Promise.allSettled([
+    callGroq("openai/gpt-oss-120b", messages),
+    callGroq("llama-3.3-70b-versatile", messages),
+    callLovable("google/gemini-3-flash-preview", messages),
+  ]);
+
+  const good = drafts
+    .filter((d): d is PromiseFulfilledResult<string> => d.status === "fulfilled" && Boolean(d.value.trim()))
+    .map((d) => d.value.trim());
+
+  if (good.length === 0) return await callLovable("google/gemini-3-flash-preview", messages);
+  if (good.length === 1) return good[0];
+
+  // Récupère la dernière demande de l'utilisateur pour guider la synthèse.
+  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const synthMessages: ChatMsg[] = [
+    {
+      role: "system",
+      content:
+        "Tu es Alex Base 1, une IA surpuissante qui fusionne les forces de plusieurs modèles. " +
+        "On te donne plusieurs réponses candidates à la même question. Analyse-les, garde le meilleur de chacune, " +
+        "corrige les erreurs, et produis UNE seule réponse finale, complète, exacte et parfaitement rédigée. " +
+        "N'évoque jamais l'existence des réponses candidates ni le processus de fusion. Réponds en français.",
+    },
+    {
+      role: "user",
+      content:
+        `Question de l'utilisateur :\n${lastUser}\n\n` +
+        good.map((g, i) => `### Réponse candidate ${i + 1}\n${g}`).join("\n\n") +
+        "\n\nProduis maintenant la meilleure réponse finale unique.",
+    },
+  ];
+
+  try {
+    return await callGroq("openai/gpt-oss-120b", synthMessages);
+  } catch {
+    try {
+      return await callLovable("google/gemini-2.5-pro", synthMessages);
+    } catch {
+      // À défaut de synthèse, renvoie la meilleure réponse brute (la plus détaillée).
+      return good.sort((a, b) => b.length - a.length)[0];
+    }
+  }
+}
+
 // Exécute un chat pour un identifiant de modèle du registre Alex.
 export async function runChat(modelId: string, messages: ChatMsg[]): Promise<string> {
   const m = getAlexModel(modelId);
+  if (m.provider === "super") {
+    return await runSuperChat(messages);
+  }
   if (m.provider === "groq") {
     try {
       return await callGroq(m.model, messages);
