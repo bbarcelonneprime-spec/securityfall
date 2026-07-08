@@ -189,62 +189,32 @@ export const describeAlexVideo = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY manquante.");
 
-    const base64 = data.dataUrl.includes(",") ? data.dataUrl.split(",").pop()! : data.dataUrl;
-
-    // Gemini via Vertex generateContent — format inlineData (base64 brut, sans préfixe data:).
-    const res = await fetch(
-      "https://ai.gateway.lovable.dev/v1beta/models/google/gemini-2.5-pro:generateContent",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: BASE_PROMPT + "\n\n" + data.instruction },
-                { inlineData: { mimeType: data.mimeType, data: base64 } },
-              ],
-            },
-          ],
-        }),
-      },
-    );
-
-    if (res.ok) {
-      const json = (await res.json()) as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      };
-      const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-      if (text.trim()) return { content: text };
-    }
-
-    // Repli : format chat completions avec bloc file (certains modèles l'acceptent).
-    const fallback = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Gemini est capable d'analyser une vidéo passée comme fichier (data URL).
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: BASE_PROMPT + "\n\nTu analyses une vidéo fournie par l'utilisateur." },
+          { role: "system", content: BASE_PROMPT + "\n\nTu analyses une vidéo fournie par l'utilisateur. Sois précis et structuré." },
           {
             role: "user",
             content: [
               { type: "text", text: data.instruction },
-              { type: "file", file: { filename: "video", file_data: data.dataUrl } },
+              { type: "file", file: { filename: `video.${data.mimeType.split("/")[1] ?? "mp4"}`, file_data: data.dataUrl } },
             ],
           },
         ],
       }),
     });
 
-    if (fallback.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
-    if (fallback.status === 402) throw new Error("Crédits IA épuisés.");
-    if (!fallback.ok) {
-      console.error("Video analysis error:", fallback.status, await fallback.text());
+    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
+    if (res.status === 402) throw new Error("Crédits IA épuisés.");
+    if (!res.ok) {
+      console.error("Video analysis error:", res.status, await res.text());
       throw new Error("L'analyse de cette vidéo a échoué. Essaie une vidéo plus courte ou un autre format (MP4).");
     }
 
-    const json = (await fallback.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     return { content: json.choices?.[0]?.message?.content ?? "" };
   });
