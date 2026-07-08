@@ -1859,35 +1859,55 @@ function Index() {
 
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               <p className="px-3 pb-2 pt-3 text-xs font-medium text-slate-500">Recents</p>
-              {alexConvs.length === 0 && (
-                <p className="px-3 py-2 text-xs text-slate-500">Aucune conversation.</p>
-              )}
-              {alexConvs.map((c) => (
-                <div
-                  key={c.id}
-                  className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition ${
-                    c.id === alexCurrentId ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setAlexCurrentId(c.id)}
-                    className="flex flex-1 items-center gap-2 overflow-hidden px-1.5 py-0.5 text-left"
+              {(() => {
+                const q = chatSearch.trim().toLowerCase();
+                const filtered = q ? alexConvs.filter((c) => c.title.toLowerCase().includes(q)) : alexConvs;
+                if (alexConvs.length === 0) {
+                  return <p className="px-3 py-2 text-xs text-slate-500">Aucune conversation.</p>;
+                }
+                if (filtered.length === 0) {
+                  return <p className="px-3 py-2 text-xs text-slate-500">Aucun résultat pour « {chatSearch} ».</p>;
+                }
+                return filtered.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition ${
+                      c.id === alexCurrentId ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
+                    }`}
                   >
-                    <span className="truncate">{c.title}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteAlexConversation(c.id)}
-                    className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => setAlexCurrentId(c.id)}
+                      className="flex flex-1 items-center gap-2 overflow-hidden px-1.5 py-0.5 text-left"
+                    >
+                      <span className="truncate">{c.title}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteAlexConversation(c.id)}
+                      className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ));
+              })()}
             </div>
           </aside>
+
+          {/* Bouton de réouverture du panneau (quand replié) */}
+          {sidebarCollapsed && (
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              className="fixed left-4 top-16 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#11162a]/90 px-3 py-2 text-xs font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
+              aria-label="Afficher le panneau"
+            >
+              <PanelLeft className="h-4 w-4" /> Panneau
+            </button>
+          )}
+
 
           {/* Chat area */}
           <section className="relative z-10 flex flex-1 flex-col">
