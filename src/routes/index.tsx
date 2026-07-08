@@ -1707,6 +1707,69 @@ function Index() {
             )}
           </div>
         </main>
+      ) : view === "qr" ? (
+        /* ============ QR CODE GENERATOR VIEW ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-2xl px-4 py-12 pt-20 sm:py-16">
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                <QrCode className="h-7 w-7" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Générateur de QR Code</h1>
+              <p className="mx-auto mt-3 max-w-md text-slate-400">
+                Colle le lien d'un site (ou n'importe quel texte) et obtiens un QR code haute qualité, prêt à télécharger.
+              </p>
+            </header>
+
+            <form onSubmit={generateQr} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+              <label htmlFor="qrInput" className="mb-2 block text-sm font-medium text-slate-200">
+                Lien ou texte
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    id="qrInput"
+                    type="text"
+                    value={qrInput}
+                    onChange={(e) => setQrInput(e.target.value)}
+                    placeholder="https://exemple.com"
+                    className="w-full rounded-xl border border-white/10 bg-[#11162a]/80 py-2.5 pl-9 pr-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-amber-400/40"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={qrLoading || !qrInput.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {qrLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>) : (<><QrCode className="h-4 w-4" /> Générer</>)}
+                </button>
+              </div>
+              {qrError && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> {qrError}
+                </div>
+              )}
+            </form>
+
+            {qrDataUrl && (
+              <div className="mt-6 flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+                <img src={qrDataUrl} alt="QR code généré" className="h-56 w-56 rounded-2xl bg-white p-3 shadow-lg" />
+                <p className="max-w-full break-all text-center text-xs text-slate-400">{qrInput}</p>
+                <a
+                  href={qrDataUrl}
+                  download="qr-code.png"
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02]"
+                >
+                  <Download className="h-4 w-4" /> Télécharger le PNG
+                </a>
+              </div>
+            )}
+
+            <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Générateur de QR code</p>
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
