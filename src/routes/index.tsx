@@ -2207,12 +2207,19 @@ function Index() {
                   )}
                 </div>
                 <p className="mt-2 text-center text-xs text-slate-500">
-                  {alexRecording
-                    ? "🎙️ Enregistrement… clique sur ⏹ pour transcrire."
-                    : alexTranscribing
-                      ? "Transcription en cours…"
-                      : "Alex IA peut faire des erreurs. Vérifie les informations importantes."}
+                  {vocal.listening
+                    ? "🎙️ Je t'écoute… parle, puis clique sur ⏹ ou fais une pause."
+                    : vocal.speaking
+                      ? "🔊 Alex te répond à voix haute…"
+                      : voiceChatOn
+                        ? "Mode vocal actif — clique sur le micro rose pour parler à Alex."
+                        : alexRecording
+                          ? "🎙️ Enregistrement… clique sur ⏹ pour transcrire."
+                          : alexTranscribing
+                            ? "Transcription en cours…"
+                            : "Alex IA peut faire des erreurs. Vérifie les informations importantes."}
                 </p>
+
               </div>
             </form>
           </section>
