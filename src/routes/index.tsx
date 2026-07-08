@@ -663,6 +663,25 @@ function Index() {
     alexEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentConv?.messages, alexLoading]);
 
+  // Chat vocal : lit automatiquement à voix haute la dernière réponse d'Alex.
+  useEffect(() => {
+    if (!voiceChatOn || alexLoading) return;
+    const msgs = currentConv?.messages ?? [];
+    const last = msgs[msgs.length - 1];
+    if (last && last.role === "assistant" && msgs.length !== lastSpokenRef.current) {
+      lastSpokenRef.current = msgs.length;
+      vocal.speak(last.content);
+    }
+  }, [currentConv?.messages, alexLoading, voiceChatOn, vocal]);
+
+  // Coupe micro et lecture quand on désactive le mode vocal ou quitte le chat.
+  useEffect(() => {
+    if (!voiceChatOn || view !== "alex") {
+      vocal.stopListening();
+      vocal.stopSpeaking();
+    }
+  }, [voiceChatOn, view, vocal]);
+
   const sendChatMessage = async (e: FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
