@@ -2157,6 +2157,23 @@ function Index() {
                     {getAlexModel(alexModel).badge}
                     <ChevronDown className="h-3 w-3 text-slate-500" />
                   </button>
+                  {/* Micro chat vocal temps réel (Web Speech API) — visible en mode vocal */}
+                  {voiceChatOn && vocal.supported && (
+                    <button
+                      type="button"
+                      onClick={() => (vocal.listening ? vocal.stopListening() : vocal.startListening())}
+                      disabled={alexLoading}
+                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 ${
+                        vocal.listening
+                          ? "animate-pulse bg-fuchsia-500 text-white ring-4 ring-fuchsia-500/30"
+                          : "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white hover:scale-105"
+                      }`}
+                      aria-label={vocal.listening ? "Arrêter l'écoute" : "Parler à Alex"}
+                      title={vocal.listening ? "J'écoute… clique pour arrêter" : "Parle à Alex"}
+                    >
+                      {vocal.listening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={toggleAlexRecording}
@@ -2167,7 +2184,7 @@ function Index() {
                         : "text-slate-300 hover:bg-white/10"
                     }`}
                     aria-label={alexRecording ? "Arrêter l'enregistrement" : "Saisie vocale"}
-                    title={alexRecording ? "Arrête de parler pour transcrire" : "Parle au lieu d'écrire"}
+                    title={alexRecording ? "Arrête de parler pour transcrire" : "Dicter du texte (transcription)"}
                   >
                     {alexTranscribing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -2177,6 +2194,7 @@ function Index() {
                       <Mic className="h-4 w-4" />
                     )}
                   </button>
+
                   {alexInput.trim() && (
                     <button
                       type="submit"
