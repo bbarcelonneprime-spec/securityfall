@@ -1782,11 +1782,11 @@ function Index() {
           </div>
 
           {/* Sidebar */}
-          <aside className="relative z-10 flex w-full flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:w-72 sm:border-b-0 sm:border-r">
+          <aside className={`relative z-10 flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:border-b-0 sm:border-r ${sidebarCollapsed ? "hidden" : "flex w-full sm:w-72"}`}>
             <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
               <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg bg-white p-1 object-contain ring-1 ring-white/10" />
               <p className="text-base font-semibold tracking-tight">Alex IA</p>
-              <button type="button" className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire">
+              <button type="button" onClick={() => setSidebarCollapsed(true)} className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire le panneau">
                 <PanelLeft className="h-4 w-4" />
               </button>
             </div>
@@ -1800,15 +1800,33 @@ function Index() {
                 <Plus className="h-4 w-4" />
                 New chat
               </button>
-              <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
+              <button
+                type="button"
+                onClick={() => setChatSearchOpen((v) => !v)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition hover:bg-white/5 ${chatSearchOpen ? "text-white" : "text-slate-300"}`}
+              >
                 <Search className="h-4 w-4" />
                 Search chats
               </button>
+              {chatSearchOpen && (
+                <div className="relative mt-1 px-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    placeholder="Rechercher une conversation…"
+                    className="w-full rounded-lg border border-white/10 bg-[#0d1122]/80 py-2 pl-8 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-violet-400/40"
+                  />
+                </div>
+              )}
               <button type="button" onClick={goToLibrary} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
                 <LibraryBig className="h-4 w-4" />
                 Library
               </button>
             </nav>
+
 
             {/* Gems — assistants spécialisés */}
             <div className="px-3 pb-1">
