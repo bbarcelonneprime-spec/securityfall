@@ -3,7 +3,7 @@
 // Les modèles "groq" utilisent GROQ_API_KEY (ultra rapides) ; les modèles
 // "lovable" passent par la passerelle IA de Lovable (aucune clé requise).
 
-export type AlexModelProvider = "lovable" | "groq";
+export type AlexModelProvider = "lovable" | "groq" | "super";
 
 export type AlexModel = {
   id: string; // identifiant utilisé dans l'UI + envoyé au serveur
@@ -16,6 +16,15 @@ export type AlexModel = {
 };
 
 export const ALEX_MODELS: AlexModel[] = [
+  {
+    id: "alex-base-1",
+    label: "Alex Base 1",
+    provider: "super",
+    model: "super",
+    desc: "IA surpuissante — combine tous les modèles pour la meilleure réponse",
+    badge: "Base 1",
+    fast: true,
+  },
   {
     id: "llama-instant",
     label: "Alex Turbo",
@@ -79,8 +88,8 @@ export const ALEX_MODELS: AlexModel[] = [
   },
 ];
 
-// Modèle par défaut : le plus rapide.
-export const DEFAULT_ALEX_MODEL = "llama-70b";
+// Modèle par défaut : l'IA surpuissante Alex Base 1.
+export const DEFAULT_ALEX_MODEL = "alex-base-1";
 
 export function getAlexModel(id?: string): AlexModel {
   return ALEX_MODELS.find((m) => m.id === id) ?? ALEX_MODELS.find((m) => m.id === DEFAULT_ALEX_MODEL) ?? ALEX_MODELS[0];

@@ -169,3 +169,52 @@ export const describeAlexImage = createServerFn({ method: "POST" })
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     return { content: json.choices?.[0]?.message?.content ?? "" };
   });
+
+// Analyse de vidéo — l'utilisateur importe une vidéo dans le chat.
+// La vidéo est transmise à Gemini (capable d'analyse vidéo) via le gateway.
+export const describeAlexVideo = createServerFn({ method: "POST" })
+  .inputValidator((data: { dataUrl: string; mimeType?: string; instruction?: string }) => {
+    if (!data?.dataUrl || typeof data.dataUrl !== "string" || !data.dataUrl.startsWith("data:")) {
+      throw new Error("Vidéo invalide.");
+    }
+    const mimeType =
+      typeof data.mimeType === "string" && /^video\//.test(data.mimeType) ? data.mimeType : "video/mp4";
+    const instruction =
+      typeof data.instruction === "string" && data.instruction.trim()
+        ? data.instruction.trim().slice(0, 2000)
+        : "Analyse cette vidéo en détail : décris la scène, les actions, les objets et le contexte, puis résume l'essentiel.";
+    return { dataUrl: data.dataUrl, mimeType, instruction };
+  })
+  .handler(async ({ data }) => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY manquante.");
+
+    // Gemini est capable d'analyser une vidéo passée comme fichier (data URL).
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          { role: "system", content: BASE_PROMPT + "\n\nTu analyses une vidéo fournie par l'utilisateur. Sois précis et structuré." },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: data.instruction },
+              { type: "file", file: { filename: `video.${data.mimeType.split("/")[1] ?? "mp4"}`, file_data: data.dataUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (res.status === 429) throw new Error("Trop de requêtes. Réessaie dans un instant.");
+    if (res.status === 402) throw new Error("Crédits IA épuisés.");
+    if (!res.ok) {
+      console.error("Video analysis error:", res.status, await res.text());
+      throw new Error("L'analyse de cette vidéo a échoué. Essaie une vidéo plus courte ou un autre format (MP4).");
+    }
+
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    return { content: json.choices?.[0]?.message?.content ?? "" };
+  });

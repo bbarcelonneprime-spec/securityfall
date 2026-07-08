@@ -1,17 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef, useEffect, type FormEvent } from "react";
+import QRCode from "qrcode";
 import {
   ShieldCheck, Mail, Loader2, AlertCircle, Download, MessageCircle, X, Send, Bot, User,
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
   AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
-  Scissors, UploadCloud, ChevronDown, Cpu, Zap,
+  Scissors, UploadCloud, ChevronDown, Cpu, Zap, QrCode, Headphones, VolumeX, Link2,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
 import { chatWithBot } from "../lib/chatbot.functions";
-import { chatWithAlex, generateAlexImage, analyzeAlexFile, describeAlexImage } from "../lib/alex.functions";
+import { chatWithAlex, generateAlexImage, analyzeAlexFile, describeAlexImage, describeAlexVideo } from "../lib/alex.functions";
 import {
   fetchAlexData, upsertAlexConversation, deleteAlexConversation as deleteAlexConversationFn,
   saveAlexImage, deleteAlexImage as deleteAlexImageFn,
@@ -24,6 +25,7 @@ import {
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
 } from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
+import { useVocalChat } from "@/hooks/useVocalChat";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
@@ -102,6 +104,7 @@ function Index() {
   const alexImageFn = useServerFn(generateAlexImage);
   const alexFileFn = useServerFn(analyzeAlexFile);
   const alexImageDescribeFn = useServerFn(describeAlexImage);
+  const alexVideoFn = useServerFn(describeAlexVideo);
   const fetchDataFn = useServerFn(fetchAlexData);
   const upsertConvFn = useServerFn(upsertAlexConversation);
   const deleteConvFn = useServerFn(deleteAlexConversationFn);
@@ -125,7 +128,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove" | "qr">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -346,6 +349,27 @@ function Index() {
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [alexError, setAlexError] = useState<string | null>(null);
 
+  // Chatbot : recherche de conversations + repli latéral (boutons secondaires)
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const [chatSearch, setChatSearch] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Chat vocal temps réel (style ChatGPT Voice Mode) — natif navigateur
+  const [voiceChatOn, setVoiceChatOn] = useState(false);
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
+  const lastSpokenRef = useRef(0);
+  const vocal = useVocalChat({
+    onTranscript: (text) => {
+      void submitAlexText(text);
+    },
+  });
+
+  // Générateur de QR code (lien → QR)
+  const [qrInput, setQrInput] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+
   // Suppression d'arrière-plan (remove.bg)
   const [bgOriginal, setBgOriginal] = useState<string | null>(null);
   const [bgResult, setBgResult] = useState<string | null>(null);
@@ -457,13 +481,13 @@ function Index() {
     setAlexConvs((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
   };
 
-  const sendAlexMessage = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!alexInput.trim() || alexLoading) return;
+  // Envoie un message texte à Alex (partagé par le formulaire et le chat vocal).
+  const submitAlexText = async (raw: string) => {
+    const promptText = raw.trim();
+    if (!promptText || alexLoading) return;
+    setView("alex");
     const conv = ensureCurrentConv();
-    const userMsg: AlexMsg = { role: "user", content: alexInput.trim() };
-    const promptText = alexInput.trim();
-    setAlexInput("");
+    const userMsg: AlexMsg = { role: "user", content: promptText };
     setAlexError(null);
 
     const newMessages = [...conv.messages, userMsg];
@@ -502,6 +526,14 @@ function Index() {
     } finally {
       setAlexLoading(false);
     }
+  };
+
+  const sendAlexMessage = (e: FormEvent) => {
+    e.preventDefault();
+    const text = alexInput.trim();
+    if (!text || alexLoading) return;
+    setAlexInput("");
+    void submitAlexText(text);
   };
 
   // Lance une conversation Alex IA directement depuis l'accueil (barre de prompt centrale)
@@ -562,14 +594,29 @@ function Index() {
     const isVideo = file.type.startsWith("video/");
 
     if (isVideo) {
-      updateConv(conv.id, (c) => ({
-        ...c,
-        messages: [...c.messages, { role: "user", content: `🎬 **${file.name}**` }],
-      }));
-      setAlexError("L'analyse de vidéo n'est pas encore disponible. Importe une image, un PDF ou un texte.");
-      setAlexLoading(false);
+      try {
+        const dataUrl = await blobToBase64(file);
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: "user", content: `🎬 **${file.name}**${instruction ? `\n\n${instruction}` : "\n\nAnalyse cette vidéo."}` },
+          ],
+          title: c.messages.filter((m) => m.role === "user").length === 0 ? file.name.slice(0, 40) : c.title,
+        }));
+        const res = await alexVideoFn({ data: { dataUrl, mimeType: file.type, instruction: instruction || undefined } });
+        updateConv(conv.id, (c) => ({
+          ...c,
+          messages: [...c.messages, { role: "assistant", content: res.content }],
+        }));
+      } catch (err) {
+        setAlexError(err instanceof Error ? err.message : "Erreur lors de l'analyse de la vidéo.");
+      } finally {
+        setAlexLoading(false);
+      }
       return;
     }
+
 
     try {
       if (isImage) {
@@ -615,6 +662,25 @@ function Index() {
   useEffect(() => {
     alexEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentConv?.messages, alexLoading]);
+
+  // Chat vocal : lit automatiquement à voix haute la dernière réponse d'Alex.
+  useEffect(() => {
+    if (!voiceChatOn || alexLoading) return;
+    const msgs = currentConv?.messages ?? [];
+    const last = msgs[msgs.length - 1];
+    if (last && last.role === "assistant" && msgs.length !== lastSpokenRef.current) {
+      lastSpokenRef.current = msgs.length;
+      vocal.speak(last.content);
+    }
+  }, [currentConv?.messages, alexLoading, voiceChatOn, vocal]);
+
+  // Coupe micro et lecture quand on désactive le mode vocal ou quitte le chat.
+  useEffect(() => {
+    if (!voiceChatOn || view !== "alex") {
+      vocal.stopListening();
+      vocal.stopSpeaking();
+    }
+  }, [voiceChatOn, view, vocal]);
 
   const sendChatMessage = async (e: FormEvent) => {
     e.preventDefault();
@@ -673,6 +739,30 @@ function Index() {
   const goToLibrary = () => setView("library");
 
   const goToBgRemove = () => setView("bgremove");
+
+  const goToQr = () => setView("qr");
+
+  // Génère un QR code (image PNG data URL) à partir d'un lien ou d'un texte.
+  const generateQr = async (e: FormEvent) => {
+    e.preventDefault();
+    const value = qrInput.trim();
+    if (!value) return;
+    setQrError(null);
+    setQrLoading(true);
+    try {
+      const dataUrl = await QRCode.toDataURL(value, {
+        width: 640,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: { dark: "#0b0f1c", light: "#ffffff" },
+      });
+      setQrDataUrl(dataUrl);
+    } catch {
+      setQrError("Impossible de générer le QR code. Vérifie le lien ou le texte.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
 
   const handleBgFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -780,6 +870,9 @@ function Index() {
               </button>
               <button type="button" onClick={goToBgRemove} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <Scissors className="h-4 w-4" /> Retirer l'arrière-plan
+              </button>
+              <button type="button" onClick={goToQr} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <QrCode className="h-4 w-4" /> QR Code
               </button>
               <button type="button" onClick={() => setThemeOpen(true)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <Palette className="h-4 w-4" /> Thème & couleurs
@@ -931,7 +1024,20 @@ function Index() {
                   <span className="text-sm font-semibold text-white">Retirer l'arrière-plan</span>
                   <span className="text-xs text-slate-400">Photo → PNG transparent</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={goToQr}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-amber-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                    <QrCode className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">QR Code</span>
+                  <span className="text-xs text-slate-400">Lien → QR code à télécharger</span>
+                </button>
               </div>
+
 
               {/* Theme customizer trigger */}
               <button
@@ -1601,6 +1707,69 @@ function Index() {
             )}
           </div>
         </main>
+      ) : view === "qr" ? (
+        /* ============ QR CODE GENERATOR VIEW ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-2xl px-4 py-12 pt-20 sm:py-16">
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                <QrCode className="h-7 w-7" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Générateur de QR Code</h1>
+              <p className="mx-auto mt-3 max-w-md text-slate-400">
+                Colle le lien d'un site (ou n'importe quel texte) et obtiens un QR code haute qualité, prêt à télécharger.
+              </p>
+            </header>
+
+            <form onSubmit={generateQr} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+              <label htmlFor="qrInput" className="mb-2 block text-sm font-medium text-slate-200">
+                Lien ou texte
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    id="qrInput"
+                    type="text"
+                    value={qrInput}
+                    onChange={(e) => setQrInput(e.target.value)}
+                    placeholder="https://exemple.com"
+                    className="w-full rounded-xl border border-white/10 bg-[#11162a]/80 py-2.5 pl-9 pr-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-amber-400/40"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={qrLoading || !qrInput.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {qrLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>) : (<><QrCode className="h-4 w-4" /> Générer</>)}
+                </button>
+              </div>
+              {qrError && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> {qrError}
+                </div>
+              )}
+            </form>
+
+            {qrDataUrl && (
+              <div className="mt-6 flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+                <img src={qrDataUrl} alt="QR code généré" className="h-56 w-56 rounded-2xl bg-white p-3 shadow-lg" />
+                <p className="max-w-full break-all text-center text-xs text-slate-400">{qrInput}</p>
+                <a
+                  href={qrDataUrl}
+                  download="qr-code.png"
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02]"
+                >
+                  <Download className="h-4 w-4" /> Télécharger le PNG
+                </a>
+              </div>
+            )}
+
+            <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Générateur de QR code</p>
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
@@ -1613,11 +1782,11 @@ function Index() {
           </div>
 
           {/* Sidebar */}
-          <aside className="relative z-10 flex w-full flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:w-72 sm:border-b-0 sm:border-r">
+          <aside className={`relative z-10 flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:border-b-0 sm:border-r ${sidebarCollapsed ? "hidden" : "flex w-full sm:w-72"}`}>
             <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
               <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg bg-white p-1 object-contain ring-1 ring-white/10" />
               <p className="text-base font-semibold tracking-tight">Alex IA</p>
-              <button type="button" className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire">
+              <button type="button" onClick={() => setSidebarCollapsed(true)} className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire le panneau">
                 <PanelLeft className="h-4 w-4" />
               </button>
             </div>
@@ -1631,15 +1800,33 @@ function Index() {
                 <Plus className="h-4 w-4" />
                 New chat
               </button>
-              <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
+              <button
+                type="button"
+                onClick={() => setChatSearchOpen((v) => !v)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition hover:bg-white/5 ${chatSearchOpen ? "text-white" : "text-slate-300"}`}
+              >
                 <Search className="h-4 w-4" />
                 Search chats
               </button>
+              {chatSearchOpen && (
+                <div className="relative mt-1 px-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    placeholder="Rechercher une conversation…"
+                    className="w-full rounded-lg border border-white/10 bg-[#0d1122]/80 py-2 pl-8 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-violet-400/40"
+                  />
+                </div>
+              )}
               <button type="button" onClick={goToLibrary} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
                 <LibraryBig className="h-4 w-4" />
                 Library
               </button>
             </nav>
+
 
             {/* Gems — assistants spécialisés */}
             <div className="px-3 pb-1">
@@ -1672,35 +1859,55 @@ function Index() {
 
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               <p className="px-3 pb-2 pt-3 text-xs font-medium text-slate-500">Recents</p>
-              {alexConvs.length === 0 && (
-                <p className="px-3 py-2 text-xs text-slate-500">Aucune conversation.</p>
-              )}
-              {alexConvs.map((c) => (
-                <div
-                  key={c.id}
-                  className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition ${
-                    c.id === alexCurrentId ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setAlexCurrentId(c.id)}
-                    className="flex flex-1 items-center gap-2 overflow-hidden px-1.5 py-0.5 text-left"
+              {(() => {
+                const q = chatSearch.trim().toLowerCase();
+                const filtered = q ? alexConvs.filter((c) => c.title.toLowerCase().includes(q)) : alexConvs;
+                if (alexConvs.length === 0) {
+                  return <p className="px-3 py-2 text-xs text-slate-500">Aucune conversation.</p>;
+                }
+                if (filtered.length === 0) {
+                  return <p className="px-3 py-2 text-xs text-slate-500">Aucun résultat pour « {chatSearch} ».</p>;
+                }
+                return filtered.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition ${
+                      c.id === alexCurrentId ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
+                    }`}
                   >
-                    <span className="truncate">{c.title}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteAlexConversation(c.id)}
-                    className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => setAlexCurrentId(c.id)}
+                      className="flex flex-1 items-center gap-2 overflow-hidden px-1.5 py-0.5 text-left"
+                    >
+                      <span className="truncate">{c.title}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteAlexConversation(c.id)}
+                      className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ));
+              })()}
             </div>
           </aside>
+
+          {/* Bouton de réouverture du panneau (quand replié) */}
+          {sidebarCollapsed && (
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              className="fixed left-4 top-16 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#11162a]/90 px-3 py-2 text-xs font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
+              aria-label="Afficher le panneau"
+            >
+              <PanelLeft className="h-4 w-4" /> Panneau
+            </button>
+          )}
+
 
           {/* Chat area */}
           <section className="relative z-10 flex flex-1 flex-col">
@@ -1828,7 +2035,80 @@ function Index() {
                       {ALEX_GEMS.find((g) => g.id === alexPersona)?.label}
                     </span>
                   )}
+
+                  {/* Chat vocal temps réel (style ChatGPT Voice Mode) */}
+                  {vocal.supported && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVoiceChatOn((v) => {
+                          const next = !v;
+                          if (!next) { vocal.stopListening(); vocal.stopSpeaking(); }
+                          else lastSpokenRef.current = currentConv?.messages.length ?? 0;
+                          return next;
+                        });
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        voiceChatOn
+                          ? "border-fuchsia-400/50 bg-fuchsia-600/30 text-white"
+                          : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                      }`}
+                      title="Discute à la voix avec Alex (parle, il te répond à voix haute)"
+                    >
+                      <Headphones className="h-3.5 w-3.5" />
+                      Chat vocal
+                    </button>
+                  )}
+                  {voiceChatOn && vocal.supported && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setVoiceMenuOpen((v) => !v)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/10"
+                        title="Choisir la voix"
+                      >
+                        <Volume2 className="h-3.5 w-3.5" />
+                        {vocal.voices.find((v) => v.voiceURI === vocal.voiceURI)?.name?.split(" ")[0] ?? "Voix"}
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                      {voiceMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setVoiceMenuOpen(false)} />
+                          <div className="absolute bottom-full left-0 z-50 mb-2 max-h-64 w-60 overflow-y-auto rounded-2xl border border-white/10 bg-[#141a2e] p-1.5 shadow-2xl shadow-black/50">
+                            <p className="px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">Voix de lecture</p>
+                            {vocal.voices.length === 0 && (
+                              <p className="px-2.5 py-2 text-xs text-slate-400">Aucune voix disponible.</p>
+                            )}
+                            {vocal.voices.map((v) => (
+                              <button
+                                key={v.voiceURI}
+                                type="button"
+                                onClick={() => { vocal.setVoiceURI(v.voiceURI); setVoiceMenuOpen(false); }}
+                                className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition ${
+                                  v.voiceURI === vocal.voiceURI ? "bg-violet-600/25 text-white ring-1 ring-violet-400/40" : "text-slate-300 hover:bg-white/5"
+                                }`}
+                              >
+                                <span className="truncate">{v.name}</span>
+                                <span className="flex-shrink-0 text-[10px] text-slate-500">{v.lang}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {voiceChatOn && vocal.speaking && (
+                    <button
+                      type="button"
+                      onClick={vocal.stopSpeaking}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-red-400/40 bg-red-600/20 px-3 py-1.5 text-xs font-medium text-red-200 transition hover:bg-red-600/30"
+                    >
+                      <VolumeX className="h-3.5 w-3.5" />
+                      Couper la voix
+                    </button>
+                  )}
                 </div>
+
 
                 <input
                   ref={alexFileInputRef}
@@ -1877,6 +2157,23 @@ function Index() {
                     {getAlexModel(alexModel).badge}
                     <ChevronDown className="h-3 w-3 text-slate-500" />
                   </button>
+                  {/* Micro chat vocal temps réel (Web Speech API) — visible en mode vocal */}
+                  {voiceChatOn && vocal.supported && (
+                    <button
+                      type="button"
+                      onClick={() => (vocal.listening ? vocal.stopListening() : vocal.startListening())}
+                      disabled={alexLoading}
+                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 ${
+                        vocal.listening
+                          ? "animate-pulse bg-fuchsia-500 text-white ring-4 ring-fuchsia-500/30"
+                          : "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white hover:scale-105"
+                      }`}
+                      aria-label={vocal.listening ? "Arrêter l'écoute" : "Parler à Alex"}
+                      title={vocal.listening ? "J'écoute… clique pour arrêter" : "Parle à Alex"}
+                    >
+                      {vocal.listening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={toggleAlexRecording}
@@ -1887,7 +2184,7 @@ function Index() {
                         : "text-slate-300 hover:bg-white/10"
                     }`}
                     aria-label={alexRecording ? "Arrêter l'enregistrement" : "Saisie vocale"}
-                    title={alexRecording ? "Arrête de parler pour transcrire" : "Parle au lieu d'écrire"}
+                    title={alexRecording ? "Arrête de parler pour transcrire" : "Dicter du texte (transcription)"}
                   >
                     {alexTranscribing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1897,6 +2194,7 @@ function Index() {
                       <Mic className="h-4 w-4" />
                     )}
                   </button>
+
                   {alexInput.trim() && (
                     <button
                       type="submit"
@@ -1909,12 +2207,19 @@ function Index() {
                   )}
                 </div>
                 <p className="mt-2 text-center text-xs text-slate-500">
-                  {alexRecording
-                    ? "🎙️ Enregistrement… clique sur ⏹ pour transcrire."
-                    : alexTranscribing
-                      ? "Transcription en cours…"
-                      : "Alex IA peut faire des erreurs. Vérifie les informations importantes."}
+                  {vocal.listening
+                    ? "🎙️ Je t'écoute… parle, puis clique sur ⏹ ou fais une pause."
+                    : vocal.speaking
+                      ? "🔊 Alex te répond à voix haute…"
+                      : voiceChatOn
+                        ? "Mode vocal actif — clique sur le micro rose pour parler à Alex."
+                        : alexRecording
+                          ? "🎙️ Enregistrement… clique sur ⏹ pour transcrire."
+                          : alexTranscribing
+                            ? "Transcription en cours…"
+                            : "Alex IA peut faire des erreurs. Vérifie les informations importantes."}
                 </p>
+
               </div>
             </form>
           </section>
