@@ -918,6 +918,9 @@ function Index() {
               <button type="button" onClick={goToQr} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <QrCode className="h-4 w-4" /> QR Code
               </button>
+              <button type="button" onClick={goToCodex} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Gamepad2 className="h-4 w-4" /> Codex — Jeux 2D
+              </button>
               <button type="button" onClick={() => setThemeOpen(true)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <Palette className="h-4 w-4" /> Thème & couleurs
               </button>
