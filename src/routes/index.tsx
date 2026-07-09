@@ -751,6 +751,41 @@ function Index() {
 
   const goToQr = () => setView("qr");
 
+  const goToCodex = () => setView("codex");
+
+  // Codex — génère un jeu 2D jouable à partir d'une description.
+  const submitCodex = async (e: FormEvent) => {
+    e.preventDefault();
+    const prompt = codexPrompt.trim();
+    if (!prompt || codexLoading) return;
+    setCodexError(null);
+    setCodexLoading(true);
+    setCodexHtml(null);
+    try {
+      const res = await generateGameFn({ data: { prompt } });
+      if (res.error || !res.html) {
+        setCodexError(res.error ?? "Échec de la génération.");
+      } else {
+        setCodexHtml(res.html);
+      }
+    } catch {
+      setCodexError("Erreur lors de la génération du jeu. Réessaie.");
+    } finally {
+      setCodexLoading(false);
+    }
+  };
+
+  const downloadGame = () => {
+    if (!codexHtml) return;
+    const blob = new Blob([codexHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "jeu-codex.html";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Génère un QR code (image PNG data URL) à partir d'un lien ou d'un texte.
   const generateQr = async (e: FormEvent) => {
     e.preventDefault();
