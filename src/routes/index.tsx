@@ -25,11 +25,13 @@ import {
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
 } from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
+import { generateGame } from "../lib/codex.functions";
 import { useVocalChat } from "@/hooks/useVocalChat";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
+import VoiceOverlay from "@/components/VoiceOverlay";
 import alexLogo from "@/assets/alex-ia-logo.png";
 import alexGraphLogo from "@/assets/alex-ia-logo.png";
 
