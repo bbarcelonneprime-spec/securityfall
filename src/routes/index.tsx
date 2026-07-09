@@ -686,8 +686,7 @@ function Index() {
   // Coupe micro et lecture quand on désactive le mode vocal ou quitte le chat.
   useEffect(() => {
     if (!voiceChatOn || view !== "alex") {
-      vocal.stopListening();
-      vocal.stopSpeaking();
+      vocal.stopConversation();
     }
   }, [voiceChatOn, view, vocal]);
 
