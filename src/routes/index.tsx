@@ -2213,8 +2213,12 @@ function Index() {
                       onClick={() => {
                         setVoiceChatOn((v) => {
                           const next = !v;
-                          if (!next) { vocal.stopListening(); vocal.stopSpeaking(); }
-                          else lastSpokenRef.current = currentConv?.messages.length ?? 0;
+                          if (!next) {
+                            vocal.stopConversation();
+                          } else {
+                            lastSpokenRef.current = currentConv?.messages.length ?? 0;
+                            vocal.startConversation();
+                          }
                           return next;
                         });
                       }}
