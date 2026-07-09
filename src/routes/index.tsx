@@ -882,6 +882,39 @@ function Index() {
         </button>
       )}
 
+      {/* Chat vocal immersif (style ChatGPT Voice Mode) */}
+      {voiceChatOn && view === "alex" && vocal.supported && (
+        <VoiceOverlay
+          status={
+            vocal.listening
+              ? "listening"
+              : alexLoading
+                ? "thinking"
+                : vocal.speaking
+                  ? "speaking"
+                  : "idle"
+          }
+          level={vocal.level}
+          lastUser={
+            [...(currentConv?.messages ?? [])].reverse().find((m) => m.role === "user")?.content ?? null
+          }
+          lastAssistant={
+            [...(currentConv?.messages ?? [])].reverse().find((m) => m.role === "assistant")?.content ?? null
+          }
+          voices={vocal.voices}
+          voiceURI={vocal.voiceURI}
+          onSelectVoice={vocal.setVoiceURI}
+          onInterrupt={() => {
+            vocal.stopSpeaking();
+            vocal.startListening();
+          }}
+          onClose={() => {
+            setVoiceChatOn(false);
+            vocal.stopConversation();
+          }}
+        />
+      )}
+
       <div key={view} className="view-transition">
       {view === "home" ? (
         /* ============ HOME / LANDING VIEW ============ */
