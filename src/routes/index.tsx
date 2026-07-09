@@ -1829,6 +1829,118 @@ function Index() {
             <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Générateur de QR code</p>
           </div>
         </main>
+      ) : view === "codex" ? (
+        /* ============ CODEX — 2D GAME GENERATOR VIEW ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-5xl px-4 py-12 pt-20 sm:py-16">
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-lg">
+                <Gamepad2 className="h-7 w-7" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Codex — Créateur de jeux 2D</h1>
+              <p className="mx-auto mt-3 max-w-lg text-slate-400">
+                Décris le jeu de tes rêves et Codex le génère instantanément, jouable dans ton navigateur.
+                Exemple : un jeu de plateforme façon Geometry Dash.
+              </p>
+            </header>
+
+            <form onSubmit={submitCodex} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+              <label htmlFor="codexPrompt" className="mb-2 block text-sm font-medium text-slate-200">
+                Décris ton jeu
+              </label>
+              <textarea
+                id="codexPrompt"
+                value={codexPrompt}
+                onChange={(e) => setCodexPrompt(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Ex : un jeu type Geometry Dash où un cube saute par-dessus des piques au rythme, avec un score…"
+                className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 p-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-lime-400/40"
+              />
+
+              {/* Idées rapides */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                  "Geometry Dash : un cube qui saute par-dessus des piques",
+                  "Un serpent (Snake) coloré qui grandit",
+                  "Flappy Bird avec des tuyaux",
+                  "Casse-briques (Breakout) néon",
+                  "Un runner infini spatial qui évite des astéroïdes",
+                ].map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => setCodexPrompt(idea)}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-lime-400/40 hover:text-white"
+                  >
+                    {idea}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={codexLoading || !codexPrompt.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-lime-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {codexLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Création du jeu…</>) : (<><Wand2 className="h-4 w-4" /> Générer le jeu</>)}
+                </button>
+                {codexHtml && !codexLoading && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => submitCodex(new Event("submit") as unknown as FormEvent)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                    >
+                      <RefreshCw className="h-4 w-4" /> Régénérer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadGame}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                    >
+                      <Download className="h-4 w-4" /> Télécharger
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {codexError && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> {codexError}
+                </div>
+              )}
+            </form>
+
+            {codexLoading && (
+              <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl">
+                <Loader2 className="h-8 w-8 animate-spin text-lime-400" />
+                <p className="text-sm text-slate-300">Codex code ton jeu… quelques secondes.</p>
+              </div>
+            )}
+
+            {codexHtml && !codexLoading && (
+              <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl">
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-200">
+                    <Gamepad2 className="h-4 w-4 text-lime-400" /> Ton jeu
+                  </span>
+                  <span className="text-xs text-slate-500">Clique dans le cadre pour jouer</span>
+                </div>
+                <iframe
+                  title="Jeu généré par Codex"
+                  srcDoc={codexHtml}
+                  sandbox="allow-scripts allow-pointer-lock"
+                  className="h-[70vh] w-full border-0 bg-black"
+                />
+              </div>
+            )}
+
+            <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Codex, création de jeux 2D</p>
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
