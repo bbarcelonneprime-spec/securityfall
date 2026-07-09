@@ -2,6 +2,10 @@
 // API natives du navigateur : SpeechRecognition (voix → texte) et
 // speechSynthesis (texte → voix). Aucune clé API, tout côté client.
 // Isolé ici pour n'être utilisé que par l'outil Chatbot (Alex IA).
+//
+// Mode conversation continue : une fois activé, le micro se relance
+// automatiquement après chaque réponse parlée de l'IA, et l'utilisateur peut
+// interrompre l'IA en parlant (barge-in).
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Types minimaux pour SpeechRecognition (non typé par TS par défaut).
@@ -9,9 +13,12 @@ type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
-  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult:
+    | ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void)
+    | null;
   onerror: ((e: unknown) => void) | null;
   onend: (() => void) | null;
+  onspeechstart?: (() => void) | null;
   start: () => void;
   stop: () => void;
   abort: () => void;
@@ -35,13 +42,22 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [conversation, setConversation] = useState(false);
+  const [level, setLevel] = useState(0); // 0..1 amplitude micro (pour les ondes)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceURI, setVoiceURI] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalRef = useRef("");
+  const conversationRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+
+  // Analyse audio pour visualiser le niveau du micro (ondes réactives).
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const SR = getRecognitionCtor();
@@ -67,42 +83,62 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
     };
   }, []);
 
+  const stopMeter = useCallback(() => {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    void audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    setLevel(0);
+  }, []);
+
+  const startMeter = useCallback(async () => {
+    if (analyserRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const Ctx =
+        window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+      analyserRef.current = analyser;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        setLevel((prev) => prev * 0.7 + Math.min(1, rms * 3.2) * 0.3);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch {
+      // Micro refusé : on continue sans visualisation.
+    }
+  }, []);
+
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis?.cancel();
     setSpeaking(false);
   }, []);
-
-  const speak = useCallback(
-    (text: string) => {
-      const synth = window.speechSynthesis;
-      if (!synth || !text.trim()) return;
-      synth.cancel();
-      // Nettoie le markdown pour une lecture naturelle.
-      const clean = text
-        .replace(/```[\s\S]*?```/g, " (bloc de code) ")
-        .replace(/[#*`_>~]/g, "")
-        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-        .replace(/\n{2,}/g, ". ")
-        .trim();
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = lang;
-      const v = voices.find((x) => x.voiceURI === voiceURI);
-      if (v) u.voice = v;
-      u.rate = 1;
-      u.pitch = 1;
-      u.onstart = () => setSpeaking(true);
-      u.onend = () => setSpeaking(false);
-      u.onerror = () => setSpeaking(false);
-      synth.speak(u);
-    },
-    [lang, voiceURI, voices],
-  );
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
     setListening(false);
   }, []);
 
+  // Démarre une session d'écoute (une phrase). En mode conversation, se relance
+  // automatiquement via onend.
   const startListening = useCallback(() => {
     const SR = getRecognitionCtor();
     if (!SR) return;
@@ -127,27 +163,91 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
     rec.onend = () => {
       setListening(false);
       const t = finalRef.current.trim();
-      if (t) onTranscriptRef.current(t);
+      if (t) {
+        onTranscriptRef.current(t);
+      } else if (conversationRef.current) {
+        // Silence : on relance l'écoute pour garder la conversation ouverte.
+        window.setTimeout(() => {
+          if (conversationRef.current && !window.speechSynthesis?.speaking) startListening();
+        }, 400);
+      }
     };
 
     recognitionRef.current = rec;
     setListening(true);
     try {
       rec.start();
+      void startMeter();
     } catch {
       setListening(false);
     }
-  }, [lang]);
+  }, [lang, startMeter]);
+
+  const speak = useCallback(
+    (text: string) => {
+      const synth = window.speechSynthesis;
+      if (!synth || !text.trim()) return;
+      synth.cancel();
+      const clean = text
+        .replace(/```[\s\S]*?```/g, " (bloc de code) ")
+        .replace(/[#*`_>~]/g, "")
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+        .replace(/\n{2,}/g, ". ")
+        .trim();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = lang;
+      const v = voices.find((x) => x.voiceURI === voiceURI);
+      if (v) u.voice = v;
+      u.rate = 1.02;
+      u.pitch = 1;
+      u.onstart = () => setSpeaking(true);
+      u.onend = () => {
+        setSpeaking(false);
+        // Conversation continue : relance automatiquement l'écoute.
+        if (conversationRef.current) {
+          window.setTimeout(() => {
+            if (conversationRef.current) startListening();
+          }, 250);
+        }
+      };
+      u.onerror = () => setSpeaking(false);
+      synth.speak(u);
+    },
+    [lang, voiceURI, voices, startListening],
+  );
+
+  // Démarre / arrête le mode conversation continue.
+  const startConversation = useCallback(() => {
+    conversationRef.current = true;
+    setConversation(true);
+    startListening();
+  }, [startListening]);
+
+  const stopConversation = useCallback(() => {
+    conversationRef.current = false;
+    setConversation(false);
+    recognitionRef.current?.abort();
+    window.speechSynthesis?.cancel();
+    setListening(false);
+    setSpeaking(false);
+    stopMeter();
+  }, [stopMeter]);
+
+  useEffect(() => () => stopMeter(), [stopMeter]);
 
   return {
     supported,
     listening,
     speaking,
+    conversation,
+    level,
     voices,
     voiceURI,
     setVoiceURI,
     startListening,
     stopListening,
+    startConversation,
+    stopConversation,
     speak,
     stopSpeaking,
   };
