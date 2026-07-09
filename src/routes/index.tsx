@@ -7,7 +7,7 @@ import {
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
   AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
-  Scissors, UploadCloud, ChevronDown, Cpu, Zap, QrCode, Headphones, VolumeX, Link2,
+  Scissors, UploadCloud, ChevronDown, Cpu, Zap, QrCode, Headphones, VolumeX, Link2, Gamepad2, Wand2, RefreshCw,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
@@ -25,11 +25,13 @@ import {
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
 } from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
+import { generateGame } from "../lib/codex.functions";
 import { useVocalChat } from "@/hooks/useVocalChat";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
+import VoiceOverlay from "@/components/VoiceOverlay";
 import alexLogo from "@/assets/alex-ia-logo.png";
 import alexGraphLogo from "@/assets/alex-ia-logo.png";
 
@@ -128,7 +130,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove" | "qr">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove" | "qr" | "codex">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -369,6 +371,13 @@ function Index() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+
+  // Codex — générateur de jeux 2D (prompt → jeu HTML jouable)
+  const [codexPrompt, setCodexPrompt] = useState("");
+  const [codexHtml, setCodexHtml] = useState<string | null>(null);
+  const [codexLoading, setCodexLoading] = useState(false);
+  const [codexError, setCodexError] = useState<string | null>(null);
+  const generateGameFn = useServerFn(generateGame);
 
   // Suppression d'arrière-plan (remove.bg)
   const [bgOriginal, setBgOriginal] = useState<string | null>(null);
@@ -677,8 +686,7 @@ function Index() {
   // Coupe micro et lecture quand on désactive le mode vocal ou quitte le chat.
   useEffect(() => {
     if (!voiceChatOn || view !== "alex") {
-      vocal.stopListening();
-      vocal.stopSpeaking();
+      vocal.stopConversation();
     }
   }, [voiceChatOn, view, vocal]);
 
@@ -741,6 +749,41 @@ function Index() {
   const goToBgRemove = () => setView("bgremove");
 
   const goToQr = () => setView("qr");
+
+  const goToCodex = () => setView("codex");
+
+  // Codex — génère un jeu 2D jouable à partir d'une description.
+  const submitCodex = async (e: FormEvent) => {
+    e.preventDefault();
+    const prompt = codexPrompt.trim();
+    if (!prompt || codexLoading) return;
+    setCodexError(null);
+    setCodexLoading(true);
+    setCodexHtml(null);
+    try {
+      const res = await generateGameFn({ data: { prompt } });
+      if (res.error || !res.html) {
+        setCodexError(res.error ?? "Échec de la génération.");
+      } else {
+        setCodexHtml(res.html);
+      }
+    } catch {
+      setCodexError("Erreur lors de la génération du jeu. Réessaie.");
+    } finally {
+      setCodexLoading(false);
+    }
+  };
+
+  const downloadGame = () => {
+    if (!codexHtml) return;
+    const blob = new Blob([codexHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "jeu-codex.html";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Génère un QR code (image PNG data URL) à partir d'un lien ou d'un texte.
   const generateQr = async (e: FormEvent) => {
@@ -839,6 +882,39 @@ function Index() {
         </button>
       )}
 
+      {/* Chat vocal immersif (style ChatGPT Voice Mode) */}
+      {voiceChatOn && view === "alex" && vocal.supported && (
+        <VoiceOverlay
+          status={
+            vocal.listening
+              ? "listening"
+              : alexLoading
+                ? "thinking"
+                : vocal.speaking
+                  ? "speaking"
+                  : "idle"
+          }
+          level={vocal.level}
+          lastUser={
+            [...(currentConv?.messages ?? [])].reverse().find((m) => m.role === "user")?.content ?? null
+          }
+          lastAssistant={
+            [...(currentConv?.messages ?? [])].reverse().find((m) => m.role === "assistant")?.content ?? null
+          }
+          voices={vocal.voices}
+          voiceURI={vocal.voiceURI}
+          onSelectVoice={vocal.setVoiceURI}
+          onInterrupt={() => {
+            vocal.stopSpeaking();
+            vocal.startListening();
+          }}
+          onClose={() => {
+            setVoiceChatOn(false);
+            vocal.stopConversation();
+          }}
+        />
+      )}
+
       <div key={view} className="view-transition">
       {view === "home" ? (
         /* ============ HOME / LANDING VIEW ============ */
@@ -873,6 +949,9 @@ function Index() {
               </button>
               <button type="button" onClick={goToQr} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <QrCode className="h-4 w-4" /> QR Code
+              </button>
+              <button type="button" onClick={goToCodex} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+                <Gamepad2 className="h-4 w-4" /> Codex — Jeux 2D
               </button>
               <button type="button" onClick={() => setThemeOpen(true)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
                 <Palette className="h-4 w-4" /> Thème & couleurs
@@ -1035,6 +1114,18 @@ function Index() {
                   </span>
                   <span className="text-sm font-semibold text-white">QR Code</span>
                   <span className="text-xs text-slate-400">Lien → QR code à télécharger</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToCodex}
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-lime-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-lg">
+                    <Gamepad2 className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Codex</span>
+                  <span className="text-xs text-slate-400">Prompt → jeu 2D jouable</span>
                 </button>
               </div>
 
@@ -1770,6 +1861,118 @@ function Index() {
             <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Générateur de QR code</p>
           </div>
         </main>
+      ) : view === "codex" ? (
+        /* ============ CODEX — 2D GAME GENERATOR VIEW ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <div className="relative z-10 mx-auto max-w-5xl px-4 py-12 pt-20 sm:py-16">
+            <header className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-lg">
+                <Gamepad2 className="h-7 w-7" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Codex — Créateur de jeux 2D</h1>
+              <p className="mx-auto mt-3 max-w-lg text-slate-400">
+                Décris le jeu de tes rêves et Codex le génère instantanément, jouable dans ton navigateur.
+                Exemple : un jeu de plateforme façon Geometry Dash.
+              </p>
+            </header>
+
+            <form onSubmit={submitCodex} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+              <label htmlFor="codexPrompt" className="mb-2 block text-sm font-medium text-slate-200">
+                Décris ton jeu
+              </label>
+              <textarea
+                id="codexPrompt"
+                value={codexPrompt}
+                onChange={(e) => setCodexPrompt(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Ex : un jeu type Geometry Dash où un cube saute par-dessus des piques au rythme, avec un score…"
+                className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 p-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-lime-400/40"
+              />
+
+              {/* Idées rapides */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                  "Geometry Dash : un cube qui saute par-dessus des piques",
+                  "Un serpent (Snake) coloré qui grandit",
+                  "Flappy Bird avec des tuyaux",
+                  "Casse-briques (Breakout) néon",
+                  "Un runner infini spatial qui évite des astéroïdes",
+                ].map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => setCodexPrompt(idea)}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-lime-400/40 hover:text-white"
+                  >
+                    {idea}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={codexLoading || !codexPrompt.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-lime-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {codexLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Création du jeu…</>) : (<><Wand2 className="h-4 w-4" /> Générer le jeu</>)}
+                </button>
+                {codexHtml && !codexLoading && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => submitCodex(new Event("submit") as unknown as FormEvent)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                    >
+                      <RefreshCw className="h-4 w-4" /> Régénérer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadGame}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                    >
+                      <Download className="h-4 w-4" /> Télécharger
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {codexError && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> {codexError}
+                </div>
+              )}
+            </form>
+
+            {codexLoading && (
+              <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl">
+                <Loader2 className="h-8 w-8 animate-spin text-lime-400" />
+                <p className="text-sm text-slate-300">Codex code ton jeu… quelques secondes.</p>
+              </div>
+            )}
+
+            {codexHtml && !codexLoading && (
+              <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl">
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-200">
+                    <Gamepad2 className="h-4 w-4 text-lime-400" /> Ton jeu
+                  </span>
+                  <span className="text-xs text-slate-500">Clique dans le cadre pour jouer</span>
+                </div>
+                <iframe
+                  title="Jeu généré par Codex"
+                  srcDoc={codexHtml}
+                  sandbox="allow-scripts allow-pointer-lock"
+                  className="h-[70vh] w-full border-0 bg-black"
+                />
+              </div>
+            )}
+
+            <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Codex, création de jeux 2D</p>
+          </div>
+        </main>
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
@@ -2043,8 +2246,12 @@ function Index() {
                       onClick={() => {
                         setVoiceChatOn((v) => {
                           const next = !v;
-                          if (!next) { vocal.stopListening(); vocal.stopSpeaking(); }
-                          else lastSpokenRef.current = currentConv?.messages.length ?? 0;
+                          if (!next) {
+                            vocal.stopConversation();
+                          } else {
+                            lastSpokenRef.current = currentConv?.messages.length ?? 0;
+                            vocal.startConversation();
+                          }
                           return next;
                         });
                       }}
