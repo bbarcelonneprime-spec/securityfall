@@ -372,6 +372,13 @@ function Index() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
+  // Codex — générateur de jeux 2D (prompt → jeu HTML jouable)
+  const [codexPrompt, setCodexPrompt] = useState("");
+  const [codexHtml, setCodexHtml] = useState<string | null>(null);
+  const [codexLoading, setCodexLoading] = useState(false);
+  const [codexError, setCodexError] = useState<string | null>(null);
+  const generateGameFn = useServerFn(generateGame);
+
   // Suppression d'arrière-plan (remove.bg)
   const [bgOriginal, setBgOriginal] = useState<string | null>(null);
   const [bgResult, setBgResult] = useState<string | null>(null);
