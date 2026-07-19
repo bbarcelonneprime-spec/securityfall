@@ -1,7 +1,6 @@
-// Assistant de chat côté serveur : route les requêtes vers Groq (rapide) ou
-// la passerelle IA de Lovable, avec repli automatique sur Lovable si Groq
-// échoue (clé absente, quota, réseau). Fichier *.server.ts : jamais envoyé au
-// bundle client.
+// Assistant de chat côté serveur : route les requêtes vers OpenAI direct,
+// Groq (rapide) ou la passerelle IA de Lovable, avec repli automatique en
+// cascade. Fichier *.server.ts : jamais envoyé au bundle client.
 import { getAlexModel } from "./alex-models";
 
 export type ChatRole = "system" | "user" | "assistant";
@@ -10,6 +9,22 @@ export type ChatMsg = { role: ChatRole; content: string };
 // Retire les blocs de raisonnement <think>…</think> émis par certains modèles.
 function stripThink(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/^\s+/, "");
+}
+
+export async function callOpenAI(model: string, messages: ChatMsg[], opts?: { temperature?: number }): Promise<string> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY manquante.");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, temperature: opts?.temperature ?? 0.7 }),
+  });
+  if (!res.ok) {
+    console.error("OpenAI error:", res.status, await res.text().catch(() => ""));
+    throw new Error(res.status === 429 ? "RATE_LIMIT" : "OPENAI_FAIL");
+  }
+  const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return stripThink(json.choices?.[0]?.message?.content ?? "");
 }
 
 async function callGroq(model: string, messages: ChatMsg[]): Promise<string> {
@@ -62,7 +77,6 @@ async function runSuperChat(messages: ChatMsg[]): Promise<string> {
   if (good.length === 0) return await callLovable("google/gemini-3-flash-preview", messages);
   if (good.length === 1) return good[0];
 
-  // Récupère la dernière demande de l'utilisateur pour guider la synthèse.
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   const synthMessages: ChatMsg[] = [
     {
@@ -88,7 +102,6 @@ async function runSuperChat(messages: ChatMsg[]): Promise<string> {
     try {
       return await callLovable("google/gemini-2.5-pro", synthMessages);
     } catch {
-      // À défaut de synthèse, renvoie la meilleure réponse brute (la plus détaillée).
       return good.sort((a, b) => b.length - a.length)[0];
     }
   }
@@ -104,7 +117,6 @@ export async function runChat(modelId: string, messages: ChatMsg[]): Promise<str
     try {
       return await callGroq(m.model, messages);
     } catch (e) {
-      // Repli sur Lovable pour garantir une réponse même si Groq est indisponible.
       console.warn("Groq indisponible, repli Lovable:", (e as Error).message);
       return await callLovable("google/gemini-3-flash-preview", messages);
     }

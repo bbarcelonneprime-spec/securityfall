@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { runChat } from "./ai-chat.server";
+import { callOpenAI, runChat, type ChatMsg } from "./ai-chat.server";
 
 // Codex — moteur de création de jeux 2D. À partir d'un prompt en langage
-// naturel, génère un jeu HTML5 complet, autonome et jouable immédiatement.
+// naturel (ou d'une itération sur un jeu existant), génère un jeu HTML5
+// complet, autonome et jouable immédiatement.
 const CODEX_SYSTEM_PROMPT = `Tu es "Codex", un moteur expert de création de jeux 2D en HTML5.
 À partir de la description de l'utilisateur, tu génères UN SEUL fichier HTML complet et autonome implémentant un jeu jouable.
 
@@ -19,7 +20,6 @@ Génère un jeu complet et fun correspondant précisément à la demande.`;
 
 function extractHtml(raw: string): string {
   let t = raw.trim();
-  // Retire d'éventuelles clôtures markdown.
   const fence = t.match(/```(?:html)?\s*([\s\S]*?)```/i);
   if (fence) t = fence[1].trim();
   const start = t.indexOf("<!DOCTYPE");
@@ -28,23 +28,33 @@ function extractHtml(raw: string): string {
   return t.trim();
 }
 
+// Essaie OpenAI GPT-4o (meilleure qualité de code) puis retombe sur Groq GPT-OSS.
+async function generateWithFallback(messages: ChatMsg[]): Promise<string> {
+  try {
+    return await callOpenAI("gpt-4o", messages, { temperature: 0.6 });
+  } catch (e) {
+    console.warn("Codex: OpenAI indisponible, repli Groq:", (e as Error).message);
+    return await runChat("gpt-oss-120b", messages);
+  }
+}
+
 export const generateGame = createServerFn({ method: "POST" })
-  .inputValidator((data: { prompt: string }) => {
+  .inputValidator((data: { prompt: string; previousHtml?: string }) => {
     if (!data?.prompt || typeof data.prompt !== "string" || !data.prompt.trim()) {
       throw new Error("Décris le jeu que tu veux créer.");
     }
-    if (data.prompt.length > 2000) throw new Error("Description trop longue (2000 caractères max).");
-    return { prompt: data.prompt.trim() };
+    if (data.prompt.length > 4000) throw new Error("Description trop longue (4000 caractères max).");
+    return { prompt: data.prompt.trim(), previousHtml: data.previousHtml };
   })
   .handler(async ({ data }) => {
     try {
-      // Modèle de raisonnement rapide (Groq GPT-OSS 120B) — bon en génération de code.
-      const content = await runChat("gpt-oss-120b", [
+      const userContent = data.previousHtml
+        ? `Voici le jeu HTML actuel :\n\`\`\`html\n${data.previousHtml.slice(0, 60000)}\n\`\`\`\n\nModification demandée : ${data.prompt}\n\nRenvoie le NOUVEAU fichier HTML complet intégrant la modification.`
+        : `Crée ce jeu 2D : ${data.prompt}\n\nRenvoie uniquement le fichier HTML complet.`;
+
+      const content = await generateWithFallback([
         { role: "system", content: CODEX_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Crée ce jeu 2D : ${data.prompt}\n\nRenvoie uniquement le fichier HTML complet.`,
-        },
+        { role: "user", content: userContent },
       ]);
       const html = extractHtml(content);
       if (!html.toLowerCase().includes("<html") && !html.toLowerCase().includes("<!doctype")) {
@@ -54,5 +64,27 @@ export const generateGame = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("Codex generateGame error:", e);
       return { html: null, error: "Erreur lors de la génération du jeu. Réessaie dans un instant." };
+    }
+  });
+
+// Nomme automatiquement un jeu à partir de son prompt (court, accrocheur).
+export const nameGame = createServerFn({ method: "POST" })
+  .inputValidator((data: { prompt: string }) => {
+    if (!data?.prompt) throw new Error("prompt manquant");
+    return { prompt: data.prompt.slice(0, 500) };
+  })
+  .handler(async ({ data }) => {
+    try {
+      const content = await callOpenAI(
+        "gpt-4o-mini",
+        [
+          { role: "system", content: "Tu donnes un nom court (3 mots max) et accrocheur à un jeu vidéo, en français. Réponds uniquement avec le nom, sans guillemets ni ponctuation finale." },
+          { role: "user", content: data.prompt },
+        ],
+        { temperature: 0.9 },
+      );
+      return { name: content.replace(/["'\n]/g, "").trim().slice(0, 60) || "Mon jeu" };
+    } catch {
+      return { name: data.prompt.split(/\s+/).slice(0, 4).join(" ").slice(0, 60) || "Mon jeu" };
     }
   });
