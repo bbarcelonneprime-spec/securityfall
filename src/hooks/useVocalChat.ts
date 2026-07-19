@@ -138,13 +138,18 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
   }, []);
 
   // Démarre une session d'écoute (une phrase). En mode conversation, se relance
-  // automatiquement via onend.
+  // automatiquement via onend. Robuste contre les doubles-start (InvalidStateError).
   const startListening = useCallback(() => {
     const SR = getRecognitionCtor();
     if (!SR) return;
-    // Coupe toute lecture en cours pour éviter que le micro capte la voix de l'IA.
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
+    // Ne pas démarrer si une session est déjà active ou si l'IA parle encore.
+    if (recognitionRef.current || listening) return;
+    if (window.speechSynthesis?.speaking) {
+      window.setTimeout(() => {
+        if (conversationRef.current && !window.speechSynthesis?.speaking) startListening();
+      }, 300);
+      return;
+    }
 
     const rec = new SR();
     rec.lang = lang;
@@ -159,17 +164,27 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
       }
       finalRef.current = text;
     };
-    rec.onerror = () => setListening(false);
+    rec.onerror = (evt: unknown) => {
+      const err = (evt as { error?: string })?.error;
+      // "no-speech" / "aborted" sont bénins : on relance simplement en conversation.
+      if (err && err !== "no-speech" && err !== "aborted") {
+        console.warn("SpeechRecognition error:", err);
+      }
+      setListening(false);
+    };
     rec.onend = () => {
       setListening(false);
+      recognitionRef.current = null;
       const t = finalRef.current.trim();
       if (t) {
         onTranscriptRef.current(t);
       } else if (conversationRef.current) {
-        // Silence : on relance l'écoute pour garder la conversation ouverte.
+        // Silence : on relance l'écoute après un court délai (évite le busy-loop).
         window.setTimeout(() => {
-          if (conversationRef.current && !window.speechSynthesis?.speaking) startListening();
-        }, 400);
+          if (conversationRef.current && !window.speechSynthesis?.speaking && !recognitionRef.current) {
+            startListening();
+          }
+        }, 500);
       }
     };
 
@@ -178,10 +193,13 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
     try {
       rec.start();
       void startMeter();
-    } catch {
+    } catch (e) {
+      // InvalidStateError si déjà démarré : on ignore proprement.
+      console.warn("rec.start failed:", (e as Error).message);
+      recognitionRef.current = null;
       setListening(false);
     }
-  }, [lang, startMeter]);
+  }, [lang, listening, startMeter]);
 
   const speak = useCallback(
     (text: string) => {

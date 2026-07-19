@@ -322,3 +322,28 @@
   .no-print { display: none !important; }
   @page { margin: 1.5cm; }
 }
+
+/* ============ Mobile & tablet responsive polish ============ */
+/* Safe-area (iPhone notch) padding helpers */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}
+
+/* Empêche l'iOS Safari de zoomer sur les inputs quand le texte est < 16px */
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  /* Le titre du hero peut être trop grand sur petit écran */
+  .hero-title { font-size: clamp(1.75rem, 8vw, 3rem) !important; line-height: 1.1 !important; }
+}
+
+/* Meilleure zone tactile pour les boutons icônes */
+@media (max-width: 768px) {
+  button[aria-label] { min-height: 40px; min-width: 40px; }
+}
+
+/* Scroll fluide sur mobile */
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior-y: none; }

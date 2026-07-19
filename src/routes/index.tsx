@@ -25,7 +25,9 @@ import {
   BACKGROUND_THEMES, applyBackgroundTheme, saveBackgroundTheme, loadBackgroundTheme,
 } from "../lib/theme";
 import { extractFileText } from "../lib/extract-file";
-import { generateGame } from "../lib/codex.functions";
+import { generateGame, nameGame } from "../lib/codex.functions";
+import { listCodexProjects, saveCodexProject, deleteCodexProject, type CodexProject } from "../lib/codex-store.functions";
+import CodexEditor from "@/components/CodexEditor";
 import { useVocalChat } from "@/hooks/useVocalChat";
 import { supabase } from "@/integrations/supabase/client";
 import LoginScreen from "@/components/LoginScreen";
@@ -372,12 +374,18 @@ function Index() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
-  // Codex — générateur de jeux 2D (prompt → jeu HTML jouable)
+  // Codex — générateur de jeux 2D + éditeur façon Lovable
   const [codexPrompt, setCodexPrompt] = useState("");
-  const [codexHtml, setCodexHtml] = useState<string | null>(null);
   const [codexLoading, setCodexLoading] = useState(false);
   const [codexError, setCodexError] = useState<string | null>(null);
+  const [codexProjects, setCodexProjects] = useState<CodexProject[]>([]);
+  const [activeCodexProject, setActiveCodexProject] = useState<CodexProject | null>(null);
+  const [codexLoaded, setCodexLoaded] = useState(false);
   const generateGameFn = useServerFn(generateGame);
+  const nameGameFn = useServerFn(nameGame);
+  const listCodexFn = useServerFn(listCodexProjects);
+  const saveCodexFn = useServerFn(saveCodexProject);
+  const deleteCodexFn = useServerFn(deleteCodexProject);
 
   // Suppression d'arrière-plan (remove.bg)
   const [bgOriginal, setBgOriginal] = useState<string | null>(null);
@@ -752,21 +760,49 @@ function Index() {
 
   const goToCodex = () => setView("codex");
 
-  // Codex — génère un jeu 2D jouable à partir d'une description.
+  // Charge les projets Codex à l'ouverture de la vue.
+  useEffect(() => {
+    if (view !== "codex" || codexLoaded || !session) return;
+    (async () => {
+      try {
+        const res = await listCodexFn();
+        setCodexProjects(res.projects);
+      } catch (e) {
+        console.error("Codex list error", e);
+      } finally {
+        setCodexLoaded(true);
+      }
+    })();
+     
+  }, [view, session]);
+
+  // Nouveau jeu : génère puis ouvre directement l'éditeur (façon Lovable).
   const submitCodex = async (e: FormEvent) => {
     e.preventDefault();
     const prompt = codexPrompt.trim();
     if (!prompt || codexLoading) return;
     setCodexError(null);
     setCodexLoading(true);
-    setCodexHtml(null);
     try {
-      const res = await generateGameFn({ data: { prompt } });
+      const [res, nameRes] = await Promise.all([
+        generateGameFn({ data: { prompt } }),
+        nameGameFn({ data: { prompt } }).catch(() => ({ name: "Nouveau jeu" })),
+      ]);
       if (res.error || !res.html) {
         setCodexError(res.error ?? "Échec de la génération.");
-      } else {
-        setCodexHtml(res.html);
+        return;
       }
+      const saved = await saveCodexFn({
+        data: {
+          name: nameRes.name || "Nouveau jeu",
+          prompt,
+          html: res.html,
+          history: [{ role: "user", content: prompt, at: Date.now() }],
+        },
+      });
+      setCodexProjects((prev) => [saved.project, ...prev]);
+      setActiveCodexProject(saved.project);
+      setCodexPrompt("");
     } catch {
       setCodexError("Erreur lors de la génération du jeu. Réessaie.");
     } finally {
@@ -774,16 +810,25 @@ function Index() {
     }
   };
 
-  const downloadGame = () => {
-    if (!codexHtml) return;
-    const blob = new Blob([codexHtml], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "jeu-codex.html";
-    a.click();
-    URL.revokeObjectURL(url);
+  const iterateCodex = async (prompt: string, previousHtml?: string) => {
+    return await generateGameFn({ data: { prompt, previousHtml } });
   };
+
+  const saveCodexEdits = async (p: CodexProject): Promise<CodexProject> => {
+    const res = await saveCodexFn({
+      data: { id: p.id, name: p.name, prompt: p.prompt, html: p.html, history: p.history },
+    });
+    setCodexProjects((prev) => prev.map((x) => (x.id === res.project.id ? res.project : x)));
+    setActiveCodexProject(res.project);
+    return res.project;
+  };
+
+  const removeCodexProject = async (id: string) => {
+    await deleteCodexFn({ data: { id } });
+    setCodexProjects((prev) => prev.filter((x) => x.id !== id));
+    if (activeCodexProject?.id === id) setActiveCodexProject(null);
+  };
+
 
   // Génère un QR code (image PNG data URL) à partir d'un lien ou d'un texte.
   const generateQr = async (e: FormEvent) => {
@@ -1862,22 +1907,30 @@ function Index() {
           </div>
         </main>
       ) : view === "codex" ? (
-        /* ============ CODEX — 2D GAME GENERATOR VIEW ============ */
+        /* ============ CODEX — DASHBOARD + ÉDITEUR DE JEUX 2D ============ */
+        activeCodexProject ? (
+          <CodexEditor
+            project={activeCodexProject}
+            onBack={() => setActiveCodexProject(null)}
+            onGenerate={iterateCodex}
+            onSave={saveCodexEdits}
+            onDelete={removeCodexProject}
+          />
+        ) : (
         <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
           <AuroraBackground />
-          <div className="relative z-10 mx-auto max-w-5xl px-4 py-12 pt-20 sm:py-16">
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-10 pt-20 sm:py-14">
             <header className="mb-8 text-center">
               <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-lg">
                 <Gamepad2 className="h-7 w-7" />
               </div>
               <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Codex — Créateur de jeux 2D</h1>
-              <p className="mx-auto mt-3 max-w-lg text-slate-400">
-                Décris le jeu de tes rêves et Codex le génère instantanément, jouable dans ton navigateur.
-                Exemple : un jeu de plateforme façon Geometry Dash.
+              <p className="mx-auto mt-3 max-w-lg text-slate-400 text-sm sm:text-base">
+                Décris un jeu, Codex le code et t'ouvre l'éditeur pour l'améliorer sans limites.
               </p>
             </header>
 
-            <form onSubmit={submitCodex} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
+            <form onSubmit={submitCodex} className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl sm:p-6">
               <label htmlFor="codexPrompt" className="mb-2 block text-sm font-medium text-slate-200">
                 Décris ton jeu
               </label>
@@ -1886,12 +1939,10 @@ function Index() {
                 value={codexPrompt}
                 onChange={(e) => setCodexPrompt(e.target.value)}
                 rows={3}
-                maxLength={2000}
+                maxLength={4000}
                 placeholder="Ex : un jeu type Geometry Dash où un cube saute par-dessus des piques au rythme, avec un score…"
                 className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 p-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-lime-400/40"
               />
-
-              {/* Idées rapides */}
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
                   "Geometry Dash : un cube qui saute par-dessus des piques",
@@ -1910,35 +1961,16 @@ function Index() {
                   </button>
                 ))}
               </div>
-
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
                 <button
                   type="submit"
                   disabled={codexLoading || !codexPrompt.trim()}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-lime-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {codexLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Création du jeu…</>) : (<><Wand2 className="h-4 w-4" /> Générer le jeu</>)}
+                  {codexLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Création du jeu…</>) : (<><Wand2 className="h-4 w-4" /> Générer et ouvrir l'éditeur</>)}
                 </button>
-                {codexHtml && !codexLoading && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => submitCodex(new Event("submit") as unknown as FormEvent)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
-                    >
-                      <RefreshCw className="h-4 w-4" /> Régénérer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={downloadGame}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
-                    >
-                      <Download className="h-4 w-4" /> Télécharger
-                    </button>
-                  </>
-                )}
+                <p className="text-xs text-slate-500">Le jeu s'ouvrira automatiquement dans l'éditeur.</p>
               </div>
-
               {codexError && (
                 <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" /> {codexError}
@@ -1946,33 +1978,51 @@ function Index() {
               )}
             </form>
 
-            {codexLoading && (
-              <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl">
-                <Loader2 className="h-8 w-8 animate-spin text-lime-400" />
-                <p className="text-sm text-slate-300">Codex code ton jeu… quelques secondes.</p>
+            {/* Projets Codex */}
+            <section className="mt-10">
+              <div className="mb-4 flex items-baseline justify-between">
+                <h2 className="text-lg font-semibold text-white">Mes jeux</h2>
+                <span className="text-xs text-slate-500">{codexProjects.length} projet{codexProjects.length > 1 ? "s" : ""}</span>
               </div>
-            )}
-
-            {codexHtml && !codexLoading && (
-              <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl">
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-                  <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-200">
-                    <Gamepad2 className="h-4 w-4 text-lime-400" /> Ton jeu
-                  </span>
-                  <span className="text-xs text-slate-500">Clique dans le cadre pour jouer</span>
+              {!codexLoaded ? (
+                <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>
+              ) : codexProjects.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-slate-400">
+                  Aucun jeu pour l'instant. Décris ton premier jeu ci-dessus !
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {codexProjects.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setActiveCodexProject(p)}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-lime-400/40 hover:bg-white/10"
+                    >
+                      <div className="relative aspect-video w-full overflow-hidden bg-black">
+                        <iframe
+                          title={p.name}
+                          srcDoc={p.html}
+                          sandbox="allow-scripts"
+                          className="pointer-events-none h-full w-full scale-[0.5] origin-top-left border-0"
+                          style={{ width: "200%", height: "200%" }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 transition group-hover:opacity-100" />
+                      </div>
+                      <div className="p-3">
+                        <p className="truncate text-sm font-semibold text-white">{p.name}</p>
+                        <p className="mt-0.5 truncate text-xs text-slate-400">{p.prompt}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <iframe
-                  title="Jeu généré par Codex"
-                  srcDoc={codexHtml}
-                  sandbox="allow-scripts allow-pointer-lock"
-                  className="h-[70vh] w-full border-0 bg-black"
-                />
-              </div>
-            )}
+              )}
+            </section>
 
             <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Codex, création de jeux 2D</p>
           </div>
         </main>
+        )
+
       ) : (
         /* ============ ALEX IA VIEW (Gemini-style) ============ */
         <main className="relative flex h-screen flex-col overflow-hidden text-slate-100 sm:flex-row" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
