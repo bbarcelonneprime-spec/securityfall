@@ -760,21 +760,49 @@ function Index() {
 
   const goToCodex = () => setView("codex");
 
-  // Codex — génère un jeu 2D jouable à partir d'une description.
+  // Charge les projets Codex à l'ouverture de la vue.
+  useEffect(() => {
+    if (view !== "codex" || codexLoaded || !session) return;
+    (async () => {
+      try {
+        const res = await listCodexFn();
+        setCodexProjects(res.projects);
+      } catch (e) {
+        console.error("Codex list error", e);
+      } finally {
+        setCodexLoaded(true);
+      }
+    })();
+     
+  }, [view, session]);
+
+  // Nouveau jeu : génère puis ouvre directement l'éditeur (façon Lovable).
   const submitCodex = async (e: FormEvent) => {
     e.preventDefault();
     const prompt = codexPrompt.trim();
     if (!prompt || codexLoading) return;
     setCodexError(null);
     setCodexLoading(true);
-    setCodexHtml(null);
     try {
-      const res = await generateGameFn({ data: { prompt } });
+      const [res, nameRes] = await Promise.all([
+        generateGameFn({ data: { prompt } }),
+        nameGameFn({ data: { prompt } }).catch(() => ({ name: "Nouveau jeu" })),
+      ]);
       if (res.error || !res.html) {
         setCodexError(res.error ?? "Échec de la génération.");
-      } else {
-        setCodexHtml(res.html);
+        return;
       }
+      const saved = await saveCodexFn({
+        data: {
+          name: nameRes.name || "Nouveau jeu",
+          prompt,
+          html: res.html,
+          history: [{ role: "user", content: prompt, at: Date.now() }],
+        },
+      });
+      setCodexProjects((prev) => [saved.project, ...prev]);
+      setActiveCodexProject(saved.project);
+      setCodexPrompt("");
     } catch {
       setCodexError("Erreur lors de la génération du jeu. Réessaie.");
     } finally {
@@ -782,16 +810,25 @@ function Index() {
     }
   };
 
-  const downloadGame = () => {
-    if (!codexHtml) return;
-    const blob = new Blob([codexHtml], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "jeu-codex.html";
-    a.click();
-    URL.revokeObjectURL(url);
+  const iterateCodex = async (prompt: string, previousHtml?: string) => {
+    return await generateGameFn({ data: { prompt, previousHtml } });
   };
+
+  const saveCodexEdits = async (p: CodexProject): Promise<CodexProject> => {
+    const res = await saveCodexFn({
+      data: { id: p.id, name: p.name, prompt: p.prompt, html: p.html, history: p.history },
+    });
+    setCodexProjects((prev) => prev.map((x) => (x.id === res.project.id ? res.project : x)));
+    setActiveCodexProject(res.project);
+    return res.project;
+  };
+
+  const removeCodexProject = async (id: string) => {
+    await deleteCodexFn({ data: { id } });
+    setCodexProjects((prev) => prev.filter((x) => x.id !== id));
+    if (activeCodexProject?.id === id) setActiveCodexProject(null);
+  };
+
 
   // Génère un QR code (image PNG data URL) à partir d'un lien ou d'un texte.
   const generateQr = async (e: FormEvent) => {
