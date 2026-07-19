@@ -374,12 +374,18 @@ function Index() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
-  // Codex — générateur de jeux 2D (prompt → jeu HTML jouable)
+  // Codex — générateur de jeux 2D + éditeur façon Lovable
   const [codexPrompt, setCodexPrompt] = useState("");
-  const [codexHtml, setCodexHtml] = useState<string | null>(null);
   const [codexLoading, setCodexLoading] = useState(false);
   const [codexError, setCodexError] = useState<string | null>(null);
+  const [codexProjects, setCodexProjects] = useState<CodexProject[]>([]);
+  const [activeCodexProject, setActiveCodexProject] = useState<CodexProject | null>(null);
+  const [codexLoaded, setCodexLoaded] = useState(false);
   const generateGameFn = useServerFn(generateGame);
+  const nameGameFn = useServerFn(nameGame);
+  const listCodexFn = useServerFn(listCodexProjects);
+  const saveCodexFn = useServerFn(saveCodexProject);
+  const deleteCodexFn = useServerFn(deleteCodexProject);
 
   // Suppression d'arrière-plan (remove.bg)
   const [bgOriginal, setBgOriginal] = useState<string | null>(null);
