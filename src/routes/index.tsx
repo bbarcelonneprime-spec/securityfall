@@ -420,17 +420,29 @@ function Index() {
           }
           saveAlexConversations([]);
         }
-        // Style Gemini : à chaque visite, une nouvelle conversation démarre et
-        // les anciennes restent sauvegardées dans l'historique.
-        const fresh = makeConversation();
-        setAlexConvs([fresh, ...saved]);
-        setAlexCurrentId(fresh.id);
+        // Comportement Gemini/ChatGPT : une nouvelle conversation démarre
+        // uniquement quand l'utilisateur ferme la fenêtre puis revient.
+        // Tant que l'onglet reste ouvert (navigation interne, refresh),
+        // on ré-ouvre la dernière conversation active via sessionStorage.
+        const SESSION_KEY = "alex:activeConvId";
+        const activeId = typeof window !== "undefined" ? window.sessionStorage.getItem(SESSION_KEY) : null;
+        const existing = activeId ? saved.find((c) => c.id === activeId) : null;
+        if (existing) {
+          setAlexConvs(saved);
+          setAlexCurrentId(existing.id);
+        } else {
+          const fresh = makeConversation();
+          setAlexConvs([fresh, ...saved]);
+          setAlexCurrentId(fresh.id);
+          if (typeof window !== "undefined") window.sessionStorage.setItem(SESSION_KEY, fresh.id);
+        }
       } catch {
         const local = loadAlexConversations();
         if (!cancelled) {
           const fresh = makeConversation();
           setAlexConvs([fresh, ...local]);
           setAlexCurrentId(fresh.id);
+          if (typeof window !== "undefined") window.sessionStorage.setItem("alex:activeConvId", fresh.id);
         }
       } finally {
         if (!cancelled) setDataLoaded(true);
