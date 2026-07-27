@@ -113,6 +113,60 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
     onBack();
   }
 
+  async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!onDescribeFile) {
+      setError("Analyse de fichier indisponible.");
+      return;
+    }
+    try {
+      setAttaching(true);
+      setError(null);
+      const desc = await onDescribeFile(file);
+      const label = file.type.startsWith("video") ? "Vidéo" : "Image";
+      setInput((prev) => `${prev ? prev + "\n\n" : ""}[${label} jointe — ${file.name}]\nInspire-toi de ceci : ${desc}`.slice(0, 4000));
+    } catch (err) {
+      setError((err as Error).message || "Impossible d'analyser le fichier.");
+    } finally {
+      setAttaching(false);
+    }
+  }
+
+  function toggleMic() {
+    if (typeof window === "undefined") return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setError("La saisie vocale n'est pas prise en charge par ce navigateur.");
+      return;
+    }
+    if (listening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "fr-FR";
+    rec.interimResults = true;
+    rec.continuous = false;
+    let final = "";
+    rec.onresult = (ev: any) => {
+      let interim = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      setInput((prev) => (prev ? prev + " " : "") + (final || interim));
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    setError(null);
+    rec.start();
+  }
+
   return (
     <div className="relative flex min-h-screen flex-col text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
       {/* Top bar */}
