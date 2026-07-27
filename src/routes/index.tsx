@@ -901,13 +901,16 @@ function Index() {
   const ADMIN_EMAIL = "bbarcelonneprime@gmail.com";
   const isAdmin = (session.user.email ?? "").toLowerCase() === ADMIN_EMAIL;
 
+  // Dans l'éditeur Codex on masque les éléments flottants pour laisser la place à l'outil.
+  const inCodexEditor = view === "codex" && !!activeCodexProject;
+
   return (
     <>
       {/* User profile menu (top-right) */}
-      <UserMenu session={session} onSignOut={signOut} />
+      {!inCodexEditor && <UserMenu session={session} onSignOut={signOut} />}
 
       {/* Admin badge — visible uniquement pour le compte administrateur */}
-      {isAdmin && (
+      {isAdmin && !inCodexEditor && (
         <div className="fixed right-16 top-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500/90 to-yellow-500/90 px-3 py-2 text-xs font-bold text-black shadow-lg backdrop-blur">
           <Crown className="h-3.5 w-3.5" />
           Mode Admin
