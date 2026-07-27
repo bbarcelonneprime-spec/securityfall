@@ -237,7 +237,25 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
             )}
           </div>
           <form onSubmit={submitIteration} className="border-t border-white/5 p-3">
+            <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFilePick} className="hidden" />
             <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-[#11162a]/80 p-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={attaching || !onDescribeFile}
+                title="Joindre une image ou vidéo"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-40"
+              >
+                {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={toggleMic}
+                title="Dicter vocalement"
+                className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition ${listening ? "border-pink-400/40 bg-pink-500/20 text-pink-200 animate-pulse" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
