@@ -453,6 +453,13 @@ function Index() {
 
   const currentConv = alexConvs.find((c) => c.id === alexCurrentId) ?? null;
 
+  // Mémorise l'ID actif dans sessionStorage pour reprendre la conversation
+  // après un rafraîchissement — reset uniquement à la fermeture de la fenêtre.
+  useEffect(() => {
+    if (typeof window === "undefined" || !alexCurrentId) return;
+    window.sessionStorage.setItem("alex:activeConvId", alexCurrentId);
+  }, [alexCurrentId]);
+
   // Sauvegarde cloud automatique (anti-rebond) de la conversation active
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
