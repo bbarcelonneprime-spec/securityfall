@@ -5,7 +5,7 @@
 // - Actions : télécharger, rejouer, plein écran, renommer, sauvegarder, supprimer, retour
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
-  ArrowLeft, Download, Loader2, Maximize2, Play, RefreshCw, Save, Send, Trash2, Wand2, Code2, Eye, MessageSquare,
+  ArrowLeft, Download, Loader2, Maximize2, Mic, Paperclip, Play, RefreshCw, Save, Send, Trash2, Wand2, Code2, Eye, MessageSquare,
 } from "lucide-react";
 import type { CodexProject, CodexHistoryItem } from "@/lib/codex-store.functions";
 
@@ -15,11 +15,12 @@ type Props = {
   onGenerate: (prompt: string, previousHtml?: string) => Promise<{ html: string | null; error: string | null }>;
   onSave: (p: CodexProject) => Promise<CodexProject>;
   onDelete: (id: string) => Promise<void>;
+  onDescribeFile?: (file: File) => Promise<string>;
 };
 
 type Tab = "preview" | "chat" | "code";
 
-export default function CodexEditor({ project, onBack, onGenerate, onSave, onDelete }: Props) {
+export default function CodexEditor({ project, onBack, onGenerate, onSave, onDelete, onDescribeFile }: Props) {
   const [name, setName] = useState(project.name);
   const [html, setHtml] = useState(project.html);
   const [history, setHistory] = useState<CodexHistoryItem[]>(project.history ?? []);
@@ -30,7 +31,11 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
   const [savedFlag, setSavedFlag] = useState(false);
   const [tab, setTab] = useState<Tab>("preview");
   const [iframeKey, setIframeKey] = useState(0);
+  const [attaching, setAttaching] = useState(false);
+  const [listening, setListening] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Autosave debounce
   const dirty = useMemo(
@@ -108,6 +113,60 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
     onBack();
   }
 
+  async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!onDescribeFile) {
+      setError("Analyse de fichier indisponible.");
+      return;
+    }
+    try {
+      setAttaching(true);
+      setError(null);
+      const desc = await onDescribeFile(file);
+      const label = file.type.startsWith("video") ? "Vidéo" : "Image";
+      setInput((prev) => `${prev ? prev + "\n\n" : ""}[${label} jointe — ${file.name}]\nInspire-toi de ceci : ${desc}`.slice(0, 4000));
+    } catch (err) {
+      setError((err as Error).message || "Impossible d'analyser le fichier.");
+    } finally {
+      setAttaching(false);
+    }
+  }
+
+  function toggleMic() {
+    if (typeof window === "undefined") return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setError("La saisie vocale n'est pas prise en charge par ce navigateur.");
+      return;
+    }
+    if (listening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "fr-FR";
+    rec.interimResults = true;
+    rec.continuous = false;
+    let final = "";
+    rec.onresult = (ev: any) => {
+      let interim = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      setInput((prev) => (prev ? prev + " " : "") + (final || interim));
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    setError(null);
+    rec.start();
+  }
+
   return (
     <div className="relative flex min-h-screen flex-col text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
       {/* Top bar */}
@@ -178,7 +237,25 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
             )}
           </div>
           <form onSubmit={submitIteration} className="border-t border-white/5 p-3">
+            <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFilePick} className="hidden" />
             <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-[#11162a]/80 p-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={attaching || !onDescribeFile}
+                title="Joindre une image ou vidéo"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-40"
+              >
+                {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={toggleMic}
+                title="Dicter vocalement"
+                className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition ${listening ? "border-pink-400/40 bg-pink-500/20 text-pink-200 animate-pulse" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

@@ -420,17 +420,29 @@ function Index() {
           }
           saveAlexConversations([]);
         }
-        // Style Gemini : à chaque visite, une nouvelle conversation démarre et
-        // les anciennes restent sauvegardées dans l'historique.
-        const fresh = makeConversation();
-        setAlexConvs([fresh, ...saved]);
-        setAlexCurrentId(fresh.id);
+        // Comportement Gemini/ChatGPT : une nouvelle conversation démarre
+        // uniquement quand l'utilisateur ferme la fenêtre puis revient.
+        // Tant que l'onglet reste ouvert (navigation interne, refresh),
+        // on ré-ouvre la dernière conversation active via sessionStorage.
+        const SESSION_KEY = "alex:activeConvId";
+        const activeId = typeof window !== "undefined" ? window.sessionStorage.getItem(SESSION_KEY) : null;
+        const existing = activeId ? saved.find((c) => c.id === activeId) : null;
+        if (existing) {
+          setAlexConvs(saved);
+          setAlexCurrentId(existing.id);
+        } else {
+          const fresh = makeConversation();
+          setAlexConvs([fresh, ...saved]);
+          setAlexCurrentId(fresh.id);
+          if (typeof window !== "undefined") window.sessionStorage.setItem(SESSION_KEY, fresh.id);
+        }
       } catch {
         const local = loadAlexConversations();
         if (!cancelled) {
           const fresh = makeConversation();
           setAlexConvs([fresh, ...local]);
           setAlexCurrentId(fresh.id);
+          if (typeof window !== "undefined") window.sessionStorage.setItem("alex:activeConvId", fresh.id);
         }
       } finally {
         if (!cancelled) setDataLoaded(true);
@@ -440,6 +452,13 @@ function Index() {
   }, [session, fetchDataFn, upsertConvFn]);
 
   const currentConv = alexConvs.find((c) => c.id === alexCurrentId) ?? null;
+
+  // Mémorise l'ID actif dans sessionStorage pour reprendre la conversation
+  // après un rafraîchissement — reset uniquement à la fermeture de la fenêtre.
+  useEffect(() => {
+    if (typeof window === "undefined" || !alexCurrentId) return;
+    window.sessionStorage.setItem("alex:activeConvId", alexCurrentId);
+  }, [alexCurrentId]);
 
   // Sauvegarde cloud automatique (anti-rebond) de la conversation active
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -901,13 +920,16 @@ function Index() {
   const ADMIN_EMAIL = "bbarcelonneprime@gmail.com";
   const isAdmin = (session.user.email ?? "").toLowerCase() === ADMIN_EMAIL;
 
+  // Dans l'éditeur Codex on masque les éléments flottants pour laisser la place à l'outil.
+  const inCodexEditor = view === "codex" && !!activeCodexProject;
+
   return (
     <>
       {/* User profile menu (top-right) */}
-      <UserMenu session={session} onSignOut={signOut} />
+      {!inCodexEditor && <UserMenu session={session} onSignOut={signOut} />}
 
       {/* Admin badge — visible uniquement pour le compte administrateur */}
-      {isAdmin && (
+      {isAdmin && !inCodexEditor && (
         <div className="fixed right-16 top-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500/90 to-yellow-500/90 px-3 py-2 text-xs font-bold text-black shadow-lg backdrop-blur">
           <Crown className="h-3.5 w-3.5" />
           Mode Admin
@@ -1915,6 +1937,20 @@ function Index() {
             onGenerate={iterateCodex}
             onSave={saveCodexEdits}
             onDelete={removeCodexProject}
+            onDescribeFile={async (file) => {
+              const dataUrl: string = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result as string);
+                r.onerror = () => reject(new Error("Lecture du fichier impossible"));
+                r.readAsDataURL(file);
+              });
+              if (file.type.startsWith("video")) {
+                const res = await alexVideoFn({ data: { dataUrl, mimeType: file.type, instruction: "Décris précisément le style visuel, les couleurs, l'ambiance et les mécaniques suggérées par cette vidéo pour inspirer un jeu 2D." } });
+                return (res as any).description || (res as any).text || "";
+              }
+              const res = await alexImageDescribeFn({ data: { dataUrl, instruction: "Décris précisément le style visuel, les couleurs, les personnages et l'ambiance de cette image pour inspirer un jeu 2D." } });
+              return (res as any).description || (res as any).text || "";
+            }}
           />
         ) : (
         <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
