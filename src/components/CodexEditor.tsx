@@ -20,7 +20,7 @@ type Props = {
 
 type Tab = "preview" | "chat" | "code";
 
-export default function CodexEditor({ project, onBack, onGenerate, onSave, onDelete }: Props) {
+export default function CodexEditor({ project, onBack, onGenerate, onSave, onDelete, onDescribeFile }: Props) {
   const [name, setName] = useState(project.name);
   const [html, setHtml] = useState(project.html);
   const [history, setHistory] = useState<CodexHistoryItem[]>(project.history ?? []);
@@ -31,7 +31,11 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
   const [savedFlag, setSavedFlag] = useState(false);
   const [tab, setTab] = useState<Tab>("preview");
   const [iframeKey, setIframeKey] = useState(0);
+  const [attaching, setAttaching] = useState(false);
+  const [listening, setListening] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Autosave debounce
   const dirty = useMemo(
