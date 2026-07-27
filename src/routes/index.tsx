@@ -1945,10 +1945,10 @@ function Index() {
                 r.readAsDataURL(file);
               });
               if (file.type.startsWith("video")) {
-                const res = await alexVideoFn({ data: { dataUrl, mimeType: file.type, prompt: "Décris précisément le style visuel, les couleurs, l'ambiance et les mécaniques suggérées par cette vidéo pour inspirer un jeu 2D." } });
+                const res = await alexVideoFn({ data: { dataUrl, mimeType: file.type, instruction: "Décris précisément le style visuel, les couleurs, l'ambiance et les mécaniques suggérées par cette vidéo pour inspirer un jeu 2D." } });
                 return (res as any).description || (res as any).text || "";
               }
-              const res = await alexImageDescribeFn({ data: { dataUrl, prompt: "Décris précisément le style visuel, les couleurs, les personnages et l'ambiance de cette image pour inspirer un jeu 2D." } });
+              const res = await alexImageDescribeFn({ data: { dataUrl, instruction: "Décris précisément le style visuel, les couleurs, les personnages et l'ambiance de cette image pour inspirer un jeu 2D." } });
               return (res as any).description || (res as any).text || "";
             }}
           />
