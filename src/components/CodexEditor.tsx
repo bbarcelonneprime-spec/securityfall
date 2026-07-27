@@ -5,7 +5,7 @@
 // - Actions : télécharger, rejouer, plein écran, renommer, sauvegarder, supprimer, retour
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
-  ArrowLeft, Download, Loader2, Maximize2, Play, RefreshCw, Save, Send, Trash2, Wand2, Code2, Eye, MessageSquare,
+  ArrowLeft, Download, Loader2, Maximize2, Mic, Paperclip, Play, RefreshCw, Save, Send, Trash2, Wand2, Code2, Eye, MessageSquare,
 } from "lucide-react";
 import type { CodexProject, CodexHistoryItem } from "@/lib/codex-store.functions";
 
@@ -15,6 +15,7 @@ type Props = {
   onGenerate: (prompt: string, previousHtml?: string) => Promise<{ html: string | null; error: string | null }>;
   onSave: (p: CodexProject) => Promise<CodexProject>;
   onDelete: (id: string) => Promise<void>;
+  onDescribeFile?: (file: File) => Promise<string>;
 };
 
 type Tab = "preview" | "chat" | "code";
