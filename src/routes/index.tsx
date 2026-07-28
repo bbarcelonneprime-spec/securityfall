@@ -1194,6 +1194,32 @@ function Index() {
                   <span className="text-sm font-semibold text-white">Codex</span>
                   <span className="text-xs text-slate-400">Prompt → jeu 2D jouable</span>
                 </button>
+
+                <a
+                  href="https://alex-code-flow.base44.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
+                    <Sparkles className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Alex API</span>
+                  <span className="text-xs text-slate-400">Ouvrir Alex Code Flow ↗</span>
+                </a>
+
+                <a
+                  href="https://married-alex-code-flow.base44.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-indigo-400/40 hover:bg-white/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg">
+                    <Code2 className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white">Alex Code</span>
+                  <span className="text-xs text-slate-400">Éditeur externe ↗</span>
+                </a>
               </div>
 
 
