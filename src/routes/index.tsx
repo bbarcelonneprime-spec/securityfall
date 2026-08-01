@@ -2320,13 +2320,39 @@ function Index() {
             {/* Messages or hero */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-8">
               {(!currentConv || currentConv.messages.length <= 1) ? (
-                <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center pb-32 text-center">
+                <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center pb-32 text-center">
                   <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl object-contain drop-shadow-[0_0_30px_rgba(139,92,246,0.5)]" />
-                  <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-4xl font-light tracking-tight text-transparent sm:text-5xl">
-                    Your move, friend!
+                  <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-3xl font-light tracking-tight text-transparent sm:text-4xl">
+                    Comment puis-je vous aider ?
                   </h1>
                   <p className="mt-3 text-sm text-slate-400">Pose une question, génère une image, ou explore une idée.</p>
+
+                  <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
+                    {[
+                      { icon: PenLine, label: "Rédiger un texte", prompt: "Aide-moi à rédiger un texte clair et professionnel sur : ", g: "from-violet-500 to-indigo-600" },
+                      { icon: Code2, label: "Coder une fonction", prompt: "Écris-moi une fonction qui ", g: "from-sky-500 to-cyan-600" },
+                      { icon: ImageIcon, label: "Générer une image", prompt: "Génère une image de ", g: "from-fuchsia-500 to-pink-600" },
+                      { icon: GraduationCap, label: "Expliquer simplement", prompt: "Explique-moi simplement : ", g: "from-amber-500 to-orange-600" },
+                    ].map((qa) => {
+                      const QIcon = qa.icon;
+                      return (
+                        <button
+                          key={qa.label}
+                          type="button"
+                          onClick={() => setAlexInput(qa.prompt)}
+                          className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.08]"
+                        >
+                          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${qa.g} text-white`}>
+                            <QIcon className="h-5 w-5" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-100">{qa.label}</span>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
               ) : (
                 <div className="mx-auto flex max-w-3xl flex-col gap-5 py-6">
                   {currentConv.messages.map((m, i) => (
