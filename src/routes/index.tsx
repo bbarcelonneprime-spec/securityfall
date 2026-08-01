@@ -1189,7 +1189,7 @@ function Index() {
                   </div>
 
                   <img
-                    src={alexStarLogo.url}
+                    src={alexLogo}
                     alt="Logo Alex IA"
                     width={280}
                     height={280}
