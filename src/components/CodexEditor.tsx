@@ -141,31 +141,71 @@ export default function CodexEditor({ project, onBack, onGenerate, onSave, onDel
       setError("La saisie vocale n'est pas prise en charge par ce navigateur.");
       return;
     }
-    if (listening && recognitionRef.current) {
-      recognitionRef.current.stop();
+    // Session déjà active : on l'arrête proprement (pas de double-start).
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        /* ignore */
+      }
       return;
     }
+
     const rec = new SR();
     rec.lang = "fr-FR";
     rec.interimResults = true;
     rec.continuous = false;
+    // Base = texte déjà saisi ; on reconstruit à chaque résultat au lieu d'empiler
+    // (c'était la cause du texte dupliqué).
+    const base = input ? input + " " : "";
     let final = "";
     rec.onresult = (ev: any) => {
       let interim = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      final = "";
+      for (let i = 0; i < ev.results.length; i++) {
         const t = ev.results[i][0].transcript;
         if (ev.results[i].isFinal) final += t;
         else interim += t;
       }
-      setInput((prev) => (prev ? prev + " " : "") + (final || interim));
+      setInput((base + (final || interim)).slice(0, 4000));
     };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
+    rec.onerror = (ev: any) => {
+      const err = ev?.error;
+      if (err && err !== "no-speech" && err !== "aborted") {
+        setError("Micro indisponible : " + err);
+      }
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    rec.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+      if (final) setInput((base + final).slice(0, 4000));
+    };
+
     recognitionRef.current = rec;
     setListening(true);
     setError(null);
-    rec.start();
+    try {
+      rec.start();
+    } catch {
+      recognitionRef.current = null;
+      setListening(false);
+    }
   }
+
+  // Nettoyage : coupe le micro si l'éditeur se démonte.
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.abort?.();
+      } catch {
+        /* ignore */
+      }
+      recognitionRef.current = null;
+    };
+  }, []);
+
 
   return (
     <div className="relative flex min-h-screen flex-col text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
