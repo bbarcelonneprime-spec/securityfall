@@ -49,6 +49,29 @@ const ALEX_GEMS: GemDef[] = [
   { id: "agent", label: "Agent autonome", icon: BrainCircuit, desc: "IA agentique (ReAct, outils, garde-fous)" },
 ];
 
+// Outils affichés sur l'accueil (grille « Catégories populaires »).
+type HomeTool = {
+  id: string;
+  label: string;
+  desc: string;
+  icon: typeof Code2;
+  gradient: string;
+  href?: string;
+};
+const HOME_TOOLS: HomeTool[] = [
+  { id: "alex", label: "Alex IA", desc: "Chatbot multimodal, images & recherche", icon: Sparkles, gradient: "from-violet-500 to-indigo-600" },
+  { id: "codex", label: "Codex", desc: "Crée des jeux 2D en un prompt", icon: Gamepad2, gradient: "from-lime-500 to-emerald-600" },
+  { id: "voice", label: "Voix IA", desc: "Texte → voix et voix → texte", icon: AudioLines, gradient: "from-fuchsia-500 to-pink-600" },
+  { id: "email", label: "Sécurité e-mail", desc: "Analyse phishing & arnaques", icon: ShieldCheck, gradient: "from-sky-500 to-cyan-600" },
+  { id: "bgremove", label: "Retirer l'arrière-plan", desc: "Détache un sujet en un clic", icon: Scissors, gradient: "from-amber-500 to-orange-600" },
+  { id: "qr", label: "QR Code", desc: "Génère et télécharge un QR", icon: QrCode, gradient: "from-slate-500 to-slate-700" },
+  { id: "library", label: "Librairie", desc: "Toutes tes images générées", icon: LibraryBig, gradient: "from-teal-500 to-emerald-600" },
+  { id: "theme", label: "Thème & couleurs", desc: "Personnalise tout le site", icon: Palette, gradient: "from-rose-500 to-violet-600" },
+  { id: "alexapi", label: "Alex API", desc: "Plateforme d'API Alex", icon: Zap, gradient: "from-indigo-500 to-blue-600", href: "https://alex-code-flow.base44.app/" },
+  { id: "alexcode", label: "Alex Code", desc: "Génère des apps web", icon: Code2, gradient: "from-purple-500 to-fuchsia-600", href: "https://married-alex-code-flow.base44.app/" },
+];
+
+
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
