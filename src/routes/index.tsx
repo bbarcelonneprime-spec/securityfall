@@ -34,8 +34,8 @@ import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
 import VoiceOverlay from "@/components/VoiceOverlay";
-import alexLogo from "@/assets/alex-ia-logo.png";
-import alexGraphLogo from "@/assets/alex-ia-logo.png";
+import alexLogo from "@/assets/alex-star-logo.png";
+import alexGraphLogo from "@/assets/alex-star-logo.png";
 
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
@@ -1016,7 +1016,7 @@ function Index() {
           {/* ===== Sidebar (style Lovable) ===== */}
           <aside className="relative z-10 hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16]/90 px-3 py-4 backdrop-blur-xl md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
-              <img src={alexGraphLogo} alt="Alex IA" className="h-9 w-9 rounded-xl bg-white p-1 object-contain ring-1 ring-white/10" />
+              <img src={alexGraphLogo} alt="Alex IA" className="h-9 w-9 rounded-xl object-contain" />
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-white">Alex IA</p>
                 <p className="text-[11px] text-slate-500">par Alex Graph</p>
@@ -2135,7 +2135,7 @@ function Index() {
           {/* Sidebar */}
           <aside className={`relative z-10 flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:border-b-0 sm:border-r ${sidebarCollapsed ? "hidden" : "flex w-full sm:w-72"}`}>
             <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
-              <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg bg-white p-1 object-contain ring-1 ring-white/10" />
+              <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg object-contain" />
               <p className="text-base font-semibold tracking-tight">Alex IA</p>
               <button type="button" onClick={() => setSidebarCollapsed(true)} className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire le panneau">
                 <PanelLeft className="h-4 w-4" />
@@ -2321,7 +2321,7 @@ function Index() {
             <div className="flex-1 overflow-y-auto px-4 sm:px-8">
               {(!currentConv || currentConv.messages.length <= 1) ? (
                 <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center pb-32 text-center">
-                  <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl bg-white p-2 object-contain ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
+                  <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl object-contain drop-shadow-[0_0_30px_rgba(139,92,246,0.5)]" />
                   <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-4xl font-light tracking-tight text-transparent sm:text-5xl">
                     Your move, friend!
                   </h1>
