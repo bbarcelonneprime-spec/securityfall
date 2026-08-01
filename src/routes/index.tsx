@@ -34,8 +34,8 @@ import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
 import VoiceOverlay from "@/components/VoiceOverlay";
-import alexLogo from "@/assets/alex-ia-logo.png";
-import alexGraphLogo from "@/assets/alex-ia-logo.png";
+import alexLogo from "@/assets/alex-star-logo.png";
+import alexGraphLogo from "@/assets/alex-star-logo.png";
 
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };
@@ -48,6 +48,29 @@ const ALEX_GEMS: GemDef[] = [
   { id: "tutor", label: "Tuteur", icon: GraduationCap, desc: "Explications pas à pas" },
   { id: "agent", label: "Agent autonome", icon: BrainCircuit, desc: "IA agentique (ReAct, outils, garde-fous)" },
 ];
+
+// Outils affichés sur l'accueil (grille « Catégories populaires »).
+type HomeTool = {
+  id: string;
+  label: string;
+  desc: string;
+  icon: typeof Code2;
+  gradient: string;
+  href?: string;
+};
+const HOME_TOOLS: HomeTool[] = [
+  { id: "alex", label: "Alex IA", desc: "Chatbot multimodal, images & recherche", icon: Sparkles, gradient: "from-violet-500 to-indigo-600" },
+  { id: "codex", label: "Codex", desc: "Crée des jeux 2D en un prompt", icon: Gamepad2, gradient: "from-lime-500 to-emerald-600" },
+  { id: "voice", label: "Voix IA", desc: "Texte → voix et voix → texte", icon: AudioLines, gradient: "from-fuchsia-500 to-pink-600" },
+  { id: "email", label: "Sécurité e-mail", desc: "Analyse phishing & arnaques", icon: ShieldCheck, gradient: "from-sky-500 to-cyan-600" },
+  { id: "bgremove", label: "Retirer l'arrière-plan", desc: "Détache un sujet en un clic", icon: Scissors, gradient: "from-amber-500 to-orange-600" },
+  { id: "qr", label: "QR Code", desc: "Génère et télécharge un QR", icon: QrCode, gradient: "from-slate-500 to-slate-700" },
+  { id: "library", label: "Librairie", desc: "Toutes tes images générées", icon: LibraryBig, gradient: "from-teal-500 to-emerald-600" },
+  { id: "theme", label: "Thème & couleurs", desc: "Personnalise tout le site", icon: Palette, gradient: "from-rose-500 to-violet-600" },
+  { id: "alexapi", label: "Alex API", desc: "Plateforme d'API Alex", icon: Zap, gradient: "from-indigo-500 to-blue-600", href: "https://alex-code-flow.base44.app/" },
+  { id: "alexcode", label: "Alex Code", desc: "Génère des apps web", icon: Code2, gradient: "from-purple-500 to-fuchsia-600", href: "https://married-alex-code-flow.base44.app/" },
+];
+
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -345,6 +368,8 @@ function Index() {
   const [alexCurrentId, setAlexCurrentId] = useState<string | null>(null);
   const [alexInput, setAlexInput] = useState("");
   const [heroPrompt, setHeroPrompt] = useState("");
+  const [toolQuery, setToolQuery] = useState("");
+
   const [alexLoading, setAlexLoading] = useState(false);
   const [alexImageMode, setAlexImageMode] = useState(false);
   const [alexDeepResearch, setAlexDeepResearch] = useState(false);
@@ -991,7 +1016,7 @@ function Index() {
           {/* ===== Sidebar (style Lovable) ===== */}
           <aside className="relative z-10 hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0c0c16]/90 px-3 py-4 backdrop-blur-xl md:flex">
             <div className="mb-6 flex items-center gap-3 px-2">
-              <img src={alexGraphLogo} alt="Alex IA" className="h-9 w-9 rounded-xl bg-white p-1 object-contain ring-1 ring-white/10" />
+              <img src={alexGraphLogo} alt="Alex IA" className="h-9 w-9 rounded-xl object-contain" />
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-white">Alex IA</p>
                 <p className="text-[11px] text-slate-500">par Alex Graph</p>
@@ -1049,191 +1074,202 @@ function Index() {
           </aside>
 
           {/* ===== Main hero area ===== */}
-          <div className="relative z-10 flex min-h-screen flex-1 flex-col overflow-hidden">
+          {/* ===== Main area ===== */}
+          <div className="relative z-10 flex min-h-screen flex-1 flex-col overflow-y-auto">
+            {/* Top bar : recherche d'outil + thème */}
+            <header className="relative z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 bg-[#0a0a14]/60 px-4 py-3 pr-24 backdrop-blur-xl sm:px-6 sm:pr-44">
+              <div className="relative min-w-0 max-w-md">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="search"
+                  value={toolQuery}
+                  onChange={(e) => setToolQuery(e.target.value)}
+                  placeholder="Rechercher un outil…"
+                  className="h-11 w-full rounded-full border border-white/10 bg-white/[0.04] pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-violet-400/40 focus:bg-white/[0.07]"
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setThemeOpen(true)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Thème & couleurs"
+                  title="Thème & couleurs"
+                >
+                  <Palette className="h-4 w-4" />
+                </button>
+              </div>
+            </header>
+
             {/* Aurora background : bleu en haut → magenta en bas */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div
                 className="absolute inset-0"
                 style={{
                   background:
-                    "radial-gradient(130% 95% at 50% 118%, rgba(255,45,130,0.85) 0%, rgba(176,38,255,0.55) 24%, rgba(70,90,235,0.45) 46%, rgba(10,10,20,0) 72%)",
+                    "radial-gradient(130% 95% at 50% 118%, rgba(255,45,130,0.55) 0%, rgba(176,38,255,0.35) 24%, rgba(70,90,235,0.3) 46%, rgba(10,10,20,0) 72%)",
                 }}
               />
-              <div
-                className="absolute inset-x-0 top-0 h-1/2"
-                style={{ background: "linear-gradient(180deg, rgba(10,10,20,1) 0%, rgba(10,10,20,0) 100%)" }}
-              />
             </div>
 
-            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-16">
-              {/* Pill banner */}
-              <button
-                type="button"
-                onClick={goToVoice}
-                className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-slate-200 backdrop-blur-xl transition hover:bg-black/40"
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600">
-                  <AudioLines className="h-3.5 w-3.5 text-white" />
-                </span>
-                Découvre la Voix IA
-                <ArrowRight className="h-4 w-4 text-slate-400" />
-              </button>
+            <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-6 sm:px-6">
+              {/* ===== Hero banner ===== */}
+              <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#141033]/90 via-[#0e1030]/80 to-[#0a0a14]/90 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
+                <div
+                  className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-60 blur-3xl"
+                  style={{ background: "radial-gradient(circle, rgba(124,58,237,0.45), rgba(56,189,248,0.25) 60%, transparent 70%)" }}
+                />
+                <div className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="min-w-0">
+                    <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                      Bienvenue sur{" "}
+                      <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-sky-400 bg-clip-text text-transparent">
+                        Alex IA
+                      </span>
+                    </h1>
+                    <p className="mt-1 text-xl font-semibold text-white sm:text-2xl">Votre boîte à outils intelligente.</p>
+                    <p className="mt-3 max-w-md text-sm text-slate-400">
+                      {userName ? `Content de te revoir, ${userName}. ` : ""}Accède à des outils simples et puissants pour
+                      t'accompagner au quotidien.
+                    </p>
 
-              <h1 className="text-center text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">
-                Quoi de neuf, {userName} ?
-              </h1>
-
-              {/* Prompt box central */}
-              <form onSubmit={submitHeroPrompt} className="mt-8 w-full max-w-2xl">
-                <div className="rounded-3xl border border-white/10 bg-black/40 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl transition focus-within:border-violet-400/40">
-                  <textarea
-                    value={heroPrompt}
-                    onChange={(e) => setHeroPrompt(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        submitHeroPrompt(e as unknown as FormEvent);
-                      }
-                    }}
-                    rows={2}
-                    maxLength={4000}
-                    placeholder="Demande quelque chose à Alex IA…"
-                    className="w-full resize-none bg-transparent px-2 py-1 text-base text-slate-100 placeholder-slate-500 outline-none"
-                  />
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <button type="button" onClick={goToAlex} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Plus d'options">
-                        <Plus className="h-5 w-5" />
+                    {/* Prompt rapide vers Alex IA */}
+                    <form onSubmit={submitHeroPrompt} className="mt-6 flex max-w-lg items-center gap-2 rounded-full border border-white/10 bg-black/40 p-1.5 pl-4 backdrop-blur-xl transition focus-within:border-violet-400/40">
+                      <input
+                        value={heroPrompt}
+                        onChange={(e) => setHeroPrompt(e.target.value)}
+                        maxLength={4000}
+                        placeholder="Demande quelque chose à Alex IA…"
+                        className="min-w-0 flex-1 bg-transparent py-2 text-sm text-slate-100 placeholder-slate-500 outline-none"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!heroPrompt.trim() || alexLoading}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-900/40 transition hover:scale-105 disabled:opacity-40"
+                        aria-label="Envoyer à Alex IA"
+                      >
+                        {alexLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                       </button>
-                      <button type="button" onClick={goToVoice} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10" aria-label="Voix">
-                        <Mic className="h-4 w-4" />
+                    </form>
+
+                    <div className="mt-8 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={goToAlex}
+                        className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition hover:scale-[1.03]"
+                      >
+                        Découvrir les outils
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goToVoice}
+                        className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+                      >
+                        <AudioLines className="h-4 w-4 text-fuchsia-300" />
+                        Voix IA
                       </button>
                     </div>
-                    <button
-                      type="submit"
-                      disabled={!heroPrompt.trim() || alexLoading}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="Envoyer"
-                    >
-                      {alexLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
-                    </button>
+
+                    {/* Stats */}
+                    <div className="mt-8 grid max-w-lg grid-cols-3 divide-x divide-white/10 border-t border-white/10 pt-5">
+                      <div className="pr-4">
+                        <p className="text-2xl font-bold text-white">10</p>
+                        <p className="text-xs text-slate-500">Outils disponibles</p>
+                      </div>
+                      <div className="px-4">
+                        <p className="text-2xl font-bold text-white">5K+</p>
+                        <p className="text-xs text-slate-500">Utilisateurs</p>
+                      </div>
+                      <div className="pl-4">
+                        <p className="text-2xl font-bold text-white">99%</p>
+                        <p className="text-xs text-slate-500">Satisfaction</p>
+                      </div>
+                    </div>
                   </div>
+
+                  <img
+                    src={alexLogo}
+                    alt="Logo Alex IA"
+                    width={280}
+                    height={280}
+                    loading="lazy"
+                    decoding="async"
+                    className="mx-auto hidden h-56 w-56 object-contain drop-shadow-[0_0_60px_rgba(139,92,246,0.55)] lg:block xl:h-64 xl:w-64"
+                  />
                 </div>
-              </form>
+              </section>
 
-              {/* Tool cards */}
-              <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <button
-                  type="button"
-                  onClick={goToAlex}
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
-                    <Sparkles className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Alex IA</span>
-                  <span className="text-xs text-slate-400">Assistant généraliste & images</span>
-                </button>
+              {/* ===== Catégories populaires ===== */}
+              <section className="mt-12">
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-white sm:text-2xl">Catégories populaires</h2>
+                  <span className="mt-2 block h-0.5 w-16 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" />
+                </div>
 
-                <button
-                  type="button"
-                  onClick={goToVoice}
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
-                    <AudioLines className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Voix IA</span>
-                  <span className="text-xs text-slate-400">Texte → voix & voix → texte</span>
-                </button>
+                {(() => {
+                  const q = toolQuery.trim().toLowerCase();
+                  const filtered = q
+                    ? HOME_TOOLS.filter((t) => `${t.label} ${t.desc}`.toLowerCase().includes(q))
+                    : HOME_TOOLS;
+                  if (filtered.length === 0) {
+                    return (
+                      <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-slate-400">
+                        Aucun outil ne correspond à « {toolQuery} ».
+                      </p>
+                    );
+                  }
+                  const actions: Record<string, () => void> = {
+                    alex: goToAlex,
+                    voice: goToVoice,
+                    email: goToEmail,
+                    bgremove: goToBgRemove,
+                    qr: goToQr,
+                    codex: goToCodex,
+                    library: goToLibrary,
+                    theme: () => setThemeOpen(true),
+                  };
+                  return (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {filtered.map((t) => {
+                        const TIcon = t.icon;
+                        const inner = (
+                          <>
+                            <span
+                              className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${t.gradient} text-white shadow-lg`}
+                            >
+                              <TIcon className="h-6 w-6" />
+                            </span>
+                            <span className="block text-base font-semibold text-white">{t.label}</span>
+                            <span className="mt-1 block text-sm text-slate-400">{t.desc}</span>
+                            <span
+                              className={`mt-5 inline-flex h-9 w-9 items-center justify-center self-end rounded-full bg-gradient-to-br ${t.gradient} text-white opacity-80 transition group-hover:opacity-100 group-hover:translate-x-0.5`}
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </span>
+                          </>
+                        );
+                        const cls =
+                          "group flex flex-col items-start rounded-3xl border border-white/10 bg-white/[0.035] p-5 text-left backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.07] hover:shadow-2xl hover:shadow-black/40";
+                        return t.href ? (
+                          <a key={t.id} href={t.href} target="_blank" rel="noopener noreferrer" className={cls}>
+                            {inner}
+                          </a>
+                        ) : (
+                          <button key={t.id} type="button" onClick={actions[t.id]} className={cls}>
+                            {inner}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </section>
 
-                <button
-                  type="button"
-                  onClick={goToEmail}
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-emerald-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
-                    <ShieldCheck className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Sécurité e-mail</span>
-                  <span className="text-xs text-slate-400">Diagnostic & prévention</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={goToBgRemove}
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-sky-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-lg">
-                    <Scissors className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Retirer l'arrière-plan</span>
-                  <span className="text-xs text-slate-400">Photo → PNG transparent</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={goToQr}
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-amber-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
-                    <QrCode className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">QR Code</span>
-                  <span className="text-xs text-slate-400">Lien → QR code à télécharger</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={goToCodex}
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-lime-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-lg">
-                    <Gamepad2 className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Codex</span>
-                  <span className="text-xs text-slate-400">Prompt → jeu 2D jouable</span>
-                </button>
-
-                <a
-                  href="https://alex-code-flow.base44.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-fuchsia-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
-                    <Sparkles className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Alex API</span>
-                  <span className="text-xs text-slate-400">Ouvrir Alex Code Flow ↗</span>
-                </a>
-
-                <a
-                  href="https://married-alex-code-flow.base44.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:scale-[1.02] hover:border-indigo-400/40 hover:bg-white/10"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg">
-                    <Code2 className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-white">Alex Code</span>
-                  <span className="text-xs text-slate-400">Éditeur externe ↗</span>
-                </a>
-              </div>
-
-
-              {/* Theme customizer trigger */}
-              <button
-                type="button"
-                onClick={() => setThemeOpen(true)}
-                className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:scale-[1.02] hover:border-violet-400/40 hover:bg-white/10"
-              >
-                <Palette className="h-4 w-4" />
-                Personnaliser le thème
-              </button>
+              <p className="mt-12 text-center text-xs text-slate-600">© Alex Graph — Alex IA</p>
             </div>
           </div>
+
 
           {/* ===== Theme customizer modal ===== */}
           {themeOpen && (
@@ -2099,7 +2135,7 @@ function Index() {
           {/* Sidebar */}
           <aside className={`relative z-10 flex-col border-b border-white/5 bg-[#11162a]/80 backdrop-blur-xl sm:border-b-0 sm:border-r ${sidebarCollapsed ? "hidden" : "flex w-full sm:w-72"}`}>
             <div className="flex items-center gap-2.5 px-5 pb-4 pt-20 sm:pt-6">
-              <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg bg-white p-1 object-contain ring-1 ring-white/10" />
+              <img src={alexLogo} alt="Alex IA" className="h-9 w-9 rounded-lg object-contain" />
               <p className="text-base font-semibold tracking-tight">Alex IA</p>
               <button type="button" onClick={() => setSidebarCollapsed(true)} className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Réduire le panneau">
                 <PanelLeft className="h-4 w-4" />
@@ -2284,18 +2320,44 @@ function Index() {
             {/* Messages or hero */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-8">
               {(!currentConv || currentConv.messages.length <= 1) ? (
-                <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center pb-32 text-center">
-                  <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl bg-white p-2 object-contain ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30" />
-                  <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-4xl font-light tracking-tight text-transparent sm:text-5xl">
-                    Your move, friend!
+                <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center pb-32 text-center">
+                  <img src={alexLogo} alt="Alex IA" className="mb-6 h-16 w-16 rounded-2xl object-contain drop-shadow-[0_0_30px_rgba(139,92,246,0.5)]" />
+                  <h1 className="bg-gradient-to-r from-violet-300 via-white to-indigo-300 bg-clip-text text-3xl font-light tracking-tight text-transparent sm:text-4xl">
+                    Comment puis-je vous aider ?
                   </h1>
                   <p className="mt-3 text-sm text-slate-400">Pose une question, génère une image, ou explore une idée.</p>
+
+                  <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
+                    {[
+                      { icon: PenLine, label: "Rédiger un texte", prompt: "Aide-moi à rédiger un texte clair et professionnel sur : ", g: "from-violet-500 to-indigo-600" },
+                      { icon: Code2, label: "Coder une fonction", prompt: "Écris-moi une fonction qui ", g: "from-sky-500 to-cyan-600" },
+                      { icon: ImageIcon, label: "Générer une image", prompt: "Génère une image de ", g: "from-fuchsia-500 to-pink-600" },
+                      { icon: GraduationCap, label: "Expliquer simplement", prompt: "Explique-moi simplement : ", g: "from-amber-500 to-orange-600" },
+                    ].map((qa) => {
+                      const QIcon = qa.icon;
+                      return (
+                        <button
+                          key={qa.label}
+                          type="button"
+                          onClick={() => setAlexInput(qa.prompt)}
+                          className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.08]"
+                        >
+                          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${qa.g} text-white`}>
+                            <QIcon className="h-5 w-5" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-100">{qa.label}</span>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
               ) : (
                 <div className="mx-auto flex max-w-3xl flex-col gap-5 py-6">
                   {currentConv.messages.map((m, i) => (
                     <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-white" : "bg-white/10"}`}>
+                      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-violet-500/15" : "bg-white/10"}`}>
                         {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" /> : <User className="h-4 w-4 text-white" />}
                       </div>
                       <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-white/5 text-slate-100 backdrop-blur" : "rounded-tr-none bg-gradient-to-br from-indigo-600 to-violet-600 text-white"}`}>
@@ -2308,7 +2370,7 @@ function Index() {
                   ))}
                   {alexLoading && (
                     <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white">
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-500/15">
                         <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" />
                       </div>
                       <div className="rounded-2xl rounded-tl-none bg-white/5 px-4 py-3 backdrop-blur">

@@ -48,7 +48,10 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
   const [voiceURI, setVoiceURI] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const startingRef = useRef(false);
+  const retryRef = useRef<number | null>(null);
   const finalRef = useRef("");
+
   const conversationRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
@@ -138,19 +141,25 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
   }, []);
 
   // Démarre une session d'écoute (une phrase). En mode conversation, se relance
-  // automatiquement via onend. Robuste contre les doubles-start (InvalidStateError).
+  // automatiquement via onend. Robuste contre les doubles-start (InvalidStateError),
+  // les relances concurrentes et les timers orphelins.
   const startListening = useCallback(() => {
     const SR = getRecognitionCtor();
     if (!SR) return;
-    // Ne pas démarrer si une session est déjà active ou si l'IA parle encore.
-    if (recognitionRef.current || listening) return;
+    // Une session est déjà active (ou en cours de démarrage) : on ne relance pas.
+    if (recognitionRef.current || startingRef.current) return;
+    // L'IA parle encore : on réessaie plus tard (un seul timer en vol).
     if (window.speechSynthesis?.speaking) {
-      window.setTimeout(() => {
-        if (conversationRef.current && !window.speechSynthesis?.speaking) startListening();
-      }, 300);
+      if (retryRef.current == null) {
+        retryRef.current = window.setTimeout(() => {
+          retryRef.current = null;
+          if (conversationRef.current && !window.speechSynthesis?.speaking) startListening();
+        }, 300);
+      }
       return;
     }
 
+    startingRef.current = true;
     const rec = new SR();
     rec.lang = lang;
     rec.interimResults = false;
@@ -174,17 +183,22 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
     };
     rec.onend = () => {
       setListening(false);
+      startingRef.current = false;
       recognitionRef.current = null;
       const t = finalRef.current.trim();
+      finalRef.current = "";
       if (t) {
         onTranscriptRef.current(t);
       } else if (conversationRef.current) {
         // Silence : on relance l'écoute après un court délai (évite le busy-loop).
-        window.setTimeout(() => {
-          if (conversationRef.current && !window.speechSynthesis?.speaking && !recognitionRef.current) {
-            startListening();
-          }
-        }, 500);
+        if (retryRef.current == null) {
+          retryRef.current = window.setTimeout(() => {
+            retryRef.current = null;
+            if (conversationRef.current && !window.speechSynthesis?.speaking && !recognitionRef.current) {
+              startListening();
+            }
+          }, 500);
+        }
       }
     };
 
@@ -197,9 +211,11 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
       // InvalidStateError si déjà démarré : on ignore proprement.
       console.warn("rec.start failed:", (e as Error).message);
       recognitionRef.current = null;
+      startingRef.current = false;
       setListening(false);
     }
-  }, [lang, listening, startMeter]);
+  }, [lang, startMeter]);
+
 
   const speak = useCallback(
     (text: string) => {
@@ -244,12 +260,20 @@ export function useVocalChat({ onTranscript, lang = "fr-FR" }: UseVocalChatOptio
   const stopConversation = useCallback(() => {
     conversationRef.current = false;
     setConversation(false);
+    if (retryRef.current != null) {
+      clearTimeout(retryRef.current);
+      retryRef.current = null;
+    }
     recognitionRef.current?.abort();
+    recognitionRef.current = null;
+    startingRef.current = false;
+    finalRef.current = "";
     window.speechSynthesis?.cancel();
     setListening(false);
     setSpeaking(false);
     stopMeter();
   }, [stopMeter]);
+
 
   useEffect(() => () => stopMeter(), [stopMeter]);
 
