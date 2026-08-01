@@ -2357,7 +2357,7 @@ function Index() {
                 <div className="mx-auto flex max-w-3xl flex-col gap-5 py-6">
                   {currentConv.messages.map((m, i) => (
                     <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-white" : "bg-white/10"}`}>
+                      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ${m.role === "assistant" ? "bg-violet-500/15" : "bg-white/10"}`}>
                         {m.role === "assistant" ? <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" /> : <User className="h-4 w-4 text-white" />}
                       </div>
                       <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role === "assistant" ? "rounded-tl-none bg-white/5 text-slate-100 backdrop-blur" : "rounded-tr-none bg-gradient-to-br from-indigo-600 to-violet-600 text-white"}`}>
@@ -2370,7 +2370,7 @@ function Index() {
                   ))}
                   {alexLoading && (
                     <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white">
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-500/15">
                         <img src={alexLogo} alt="Alex" className="h-full w-full object-contain p-1" />
                       </div>
                       <div className="rounded-2xl rounded-tl-none bg-white/5 px-4 py-3 backdrop-blur">
