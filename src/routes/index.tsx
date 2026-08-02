@@ -954,13 +954,19 @@ function Index() {
       {/* User profile menu (top-right) */}
       {!inCodexEditor && <UserMenu session={session} onSignOut={signOut} />}
 
-      {/* Admin badge — visible uniquement pour le compte administrateur */}
+      {/* Admin badge — compact (icône seule, libellé au survol) */}
       {isAdmin && !inCodexEditor && (
-        <div className="fixed right-16 top-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500/90 to-yellow-500/90 px-3 py-2 text-xs font-bold text-black shadow-lg backdrop-blur">
-          <Crown className="h-3.5 w-3.5" />
-          Mode Admin
+        <div
+          title="Mode Admin"
+          className="group fixed right-14 top-4 z-50 inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-500/90 to-yellow-500/90 px-1.5 py-1.5 text-[10px] font-bold text-black shadow-md backdrop-blur transition-all duration-300"
+        >
+          <Crown className="h-3 w-3" />
+          <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-[4.5rem] group-hover:pr-1 group-hover:opacity-100">
+            Admin
+          </span>
         </div>
       )}
+
 
       {/* Top-left home button (hidden on home view) — discret & raffiné */}
       {view !== "home" && (
