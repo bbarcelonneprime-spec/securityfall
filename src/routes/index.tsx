@@ -34,8 +34,9 @@ import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
 import VoiceOverlay from "@/components/VoiceOverlay";
-import alexLogo from "@/assets/alex-star-logo.png";
-import alexGraphLogo from "@/assets/alex-star-logo.png";
+import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
+const alexLogo = alexStarLogoAsset.url;
+const alexGraphLogo = alexStarLogoAsset.url;
 
 
 type GemDef = { id: string; label: string; icon: typeof Code2; desc: string };

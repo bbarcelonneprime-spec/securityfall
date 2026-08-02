@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Loader2, Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import alexGraphLogo from "@/assets/alex-star-logo.png";
+import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
+const alexGraphLogo = alexStarLogoAsset.url;
 
 function GoogleIcon() {
   return (
