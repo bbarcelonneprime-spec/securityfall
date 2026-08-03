@@ -34,6 +34,10 @@ import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
 import VoiceOverlay from "@/components/VoiceOverlay";
+import VoiceStudio from "@/components/VoiceStudio";
+import QrStudio from "@/components/QrStudio";
+import BgRemoveStudio from "@/components/BgRemoveStudio";
+
 import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
 const alexLogo = alexStarLogoAsset.url;
 const alexGraphLogo = alexStarLogoAsset.url;
@@ -1601,171 +1605,20 @@ function Index() {
           )}
         </main>
       ) : view === "voice" ? (
-        /* ============ VOIX IA VIEW (ElevenLabs) ============ */
-        <main className="relative min-h-screen overflow-hidden px-4 py-16 text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
-          {/* Animated particle background (antigravity) */}
+        /* ============ VOIX IA — STUDIO AUDIO (ElevenLabs) ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
           <AuroraBackground />
-
-          <div className="relative z-10 mx-auto w-full max-w-3xl">
-            <header className="mb-10 text-center">
-              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-slate-300 backdrop-blur">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600">
-                  <AudioLines className="h-3 w-3 text-white" />
-                </span>
-                Propulsé par ElevenLabs
-              </span>
-              <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                Crée un audio <span className="bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">réaliste</span>
-              </h1>
-              <p className="mx-auto mt-3 max-w-lg text-sm text-slate-400">
-                Transforme ton texte en voix naturelle, ou transcris ta voix en texte — dans plusieurs voix et langues.
-              </p>
-            </header>
-
-
-            {/* Mode switch */}
-            <div className="mx-auto mb-8 flex max-w-sm items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-              <button
-                type="button"
-                onClick={() => setVoiceMode("tts")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
-                  voiceMode === "tts" ? "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow" : "text-slate-300 hover:text-white"
-                }`}
-              >
-                <Volume2 className="h-4 w-4" /> Texte → Voix
-              </button>
-              <button
-                type="button"
-                onClick={() => setVoiceMode("stt")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
-                  voiceMode === "stt" ? "bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow" : "text-slate-300 hover:text-white"
-                }`}
-              >
-                <Mic className="h-4 w-4" /> Voix → Texte
-              </button>
-            </div>
-
-            {voiceError && (
-              <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/50 p-4 text-sm text-red-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <p>{voiceError}</p>
-              </div>
-            )}
-
-            {voiceMode === "tts" ? (
-              /* Text to speech */
-              <form onSubmit={handleSynthesize} className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
-                <label htmlFor="voiceText" className="mb-2 block text-sm font-medium text-slate-200">
-                  Ton texte
-                </label>
-                <textarea
-                  id="voiceText"
-                  value={voiceText}
-                  onChange={(e) => setVoiceText(e.target.value)}
-                  rows={5}
-                  maxLength={5000}
-                  placeholder="Écris le texte à transformer en voix…"
-                  className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-fuchsia-400/40"
-                />
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <select
-                    value={voiceId}
-                    onChange={(e) => setVoiceId(e.target.value)}
-                    className="flex-1 rounded-xl border border-white/10 bg-[#11162a]/80 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-fuchsia-400/40"
-                  >
-                    {VOICE_OPTIONS.map((v) => (
-                      <option key={v.id} value={v.id} className="bg-[#11162a]">
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={voiceLoading || !voiceText.trim()}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {voiceLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>) : (<><Play className="h-4 w-4" /> Générer la voix</>)}
-                  </button>
-                </div>
-
-                {voiceAudio && (
-                  <div className="mt-5 rounded-xl border border-white/10 bg-[#11162a]/60 p-4">
-                    <audio controls autoPlay src={voiceAudio} className="w-full">
-                      Ton navigateur ne supporte pas l'audio.
-                    </audio>
-                    <a
-                      href={voiceAudio}
-                      download="voix-ia.mp3"
-                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-fuchsia-300 hover:text-fuchsia-200"
-                    >
-                      <Download className="h-3.5 w-3.5" /> Télécharger le MP3
-                    </a>
-                  </div>
-                )}
-              </form>
-            ) : (
-              /* Speech to text */
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-                <div className="flex flex-col items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={recording ? stopRecording : startRecording}
-                    disabled={transcribing}
-                    className={`flex h-20 w-20 items-center justify-center rounded-full text-white shadow-lg transition hover:scale-105 disabled:opacity-50 ${
-                      recording ? "bg-red-600 animate-pulse" : "bg-gradient-to-br from-fuchsia-500 to-pink-600"
-                    }`}
-                    aria-label={recording ? "Arrêter l'enregistrement" : "Démarrer l'enregistrement"}
-                  >
-                    {recording ? <Square className="h-7 w-7" /> : transcribing ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-8 w-8" />}
-                  </button>
-                  <p className="text-sm text-slate-400">
-                    {recording
-                      ? "Enregistrement… clique pour arrêter."
-                      : transcribing
-                        ? "Transcription en cours…"
-                        : "Clique sur le micro et parle."}
-                  </p>
-                </div>
-
-                <div className="mt-6">
-                  <div className="mb-2 flex items-center justify-between">
-                    <label htmlFor="transcript" className="flex items-center gap-1.5 text-sm font-medium text-slate-200">
-                      <FileText className="h-4 w-4" /> Transcription
-                    </label>
-                    {transcript && (
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard?.writeText(transcript)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-fuchsia-300 hover:text-fuchsia-200"
-                      >
-                        <Copy className="h-3.5 w-3.5" /> Copier
-                      </button>
-                    )}
-                  </div>
-                  <textarea
-                    id="transcript"
-                    value={transcript}
-                    onChange={(e) => setTranscript(e.target.value)}
-                    rows={6}
-                    placeholder="Le texte transcrit apparaîtra ici…"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-[#11162a]/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-fuchsia-400/40"
-                  />
-                  {transcript && (
-                    <button
-                      type="button"
-                      onClick={() => setTranscript("")}
-                      className="mt-3 text-xs font-medium text-slate-400 hover:text-slate-200"
-                    >
-                      Effacer
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <p className="mt-10 text-center text-xs text-slate-500">Propulsé par ElevenLabs — © Alex Graph</p>
-          </div>
+          <VoiceStudio
+            onHome={goHome}
+            onSynthesize={(p) => voiceFn({ data: p })}
+            onTranscribe={async (blob) => {
+              const audio = await blobToBase64(blob);
+              const res = await transcribeFn({ data: { audio, mimeType: blob.type } });
+              return { text: res.text, error: res.error };
+            }}
+          />
         </main>
+
       ) : view === "library" ? (
         /* ============ IMAGE LIBRARY VIEW ============ */
         <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0a0a14)" }}>
@@ -1828,174 +1681,24 @@ function Index() {
           </div>
         </main>
       ) : view === "bgremove" ? (
-        /* ============ RETIRER L'ARRIÈRE-PLAN ============ */
+        /* ============ RETIRER L'ARRIÈRE-PLAN — STUDIO ============ */
         <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
           <AuroraBackground />
-          <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:py-16">
-            <button
-              type="button"
-              onClick={goHome}
-              className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
-            >
-              <Home className="h-4 w-4" /> Accueil
-            </button>
-
-            <header className="mb-8 text-center">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-lg">
-                <Scissors className="h-7 w-7" />
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                Retirer l'arrière-plan
-              </h1>
-              <p className="mx-auto mt-3 max-w-xl text-slate-400">
-                Importe une photo et obtiens instantanément un PNG au fond transparent, prêt à télécharger.
-              </p>
-            </header>
-
-            <input
-              ref={bgFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleBgFile}
-              className="hidden"
-            />
-
-            {!bgOriginal && !bgLoading && (
-              <button
-                type="button"
-                onClick={() => bgFileInputRef.current?.click()}
-                className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-white/15 bg-white/5 px-6 py-16 text-center backdrop-blur-xl transition hover:border-sky-400/50 hover:bg-white/10"
-              >
-                <UploadCloud className="h-10 w-10 text-sky-300" />
-                <span className="text-sm font-medium text-slate-100">Clique pour importer une image</span>
-                <span className="text-xs text-slate-400">JPG, PNG — jusqu'à 12 Mo</span>
-              </button>
-            )}
-
-            {bgError && (
-              <div className="mx-auto mt-6 flex max-w-lg items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" /> {bgError}
-              </div>
-            )}
-
-            {(bgOriginal || bgLoading) && (
-              <div className="mt-4 grid gap-6 sm:grid-cols-2">
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-                  <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Original</p>
-                  {bgOriginal && (
-                    <img src={bgOriginal} alt="Image d'origine" className="mx-auto max-h-72 w-auto rounded-xl object-contain" />
-                  )}
-                </div>
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-                  <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Sans arrière-plan</p>
-                  <div
-                    className="flex min-h-[12rem] items-center justify-center rounded-xl"
-                    style={{
-                      backgroundColor: "#ffffff",
-                      backgroundImage:
-                        "linear-gradient(45deg,#e5e7eb 25%,transparent 25%),linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e7eb 75%),linear-gradient(-45deg,transparent 75%,#e5e7eb 75%)",
-                      backgroundSize: "18px 18px",
-                      backgroundPosition: "0 0,0 9px,9px -9px,-9px 0",
-                    }}
-                  >
-                    {bgLoading ? (
-                      <div className="flex flex-col items-center gap-2 py-8 text-slate-600">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        <span className="text-xs">Traitement en cours…</span>
-                      </div>
-                    ) : bgResult ? (
-                      <img src={bgResult} alt="Sans arrière-plan" className="max-h-72 w-auto object-contain" />
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {(bgOriginal || bgResult) && !bgLoading && (
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                {bgResult && (
-                  <a
-                    href={bgResult}
-                    download="sans-arriere-plan.png"
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-sky-500 to-cyan-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02]"
-                  >
-                    <Download className="h-4 w-4" /> Télécharger le PNG
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => bgFileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10"
-                >
-                  <UploadCloud className="h-4 w-4" /> Autre image
-                </button>
-              </div>
-            )}
-          </div>
+          <BgRemoveStudio
+            onHome={goHome}
+            onRemove={async (dataUrl) => {
+              const res = await removeBgFn({ data: { imageBase64: dataUrl } });
+              return res.imageUrl;
+            }}
+          />
         </main>
       ) : view === "qr" ? (
-        /* ============ QR CODE GENERATOR VIEW ============ */
+        /* ============ GÉNÉRATEUR DE QR CODE — STUDIO ============ */
         <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
           <AuroraBackground />
-          <div className="relative z-10 mx-auto max-w-2xl px-4 py-12 pt-20 sm:py-16">
-            <header className="mb-8 text-center">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
-                <QrCode className="h-7 w-7" />
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Générateur de QR Code</h1>
-              <p className="mx-auto mt-3 max-w-md text-slate-400">
-                Colle le lien d'un site (ou n'importe quel texte) et obtiens un QR code haute qualité, prêt à télécharger.
-              </p>
-            </header>
-
-            <form onSubmit={generateQr} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
-              <label htmlFor="qrInput" className="mb-2 block text-sm font-medium text-slate-200">
-                Lien ou texte
-              </label>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  <input
-                    id="qrInput"
-                    type="text"
-                    value={qrInput}
-                    onChange={(e) => setQrInput(e.target.value)}
-                    placeholder="https://exemple.com"
-                    className="w-full rounded-xl border border-white/10 bg-[#11162a]/80 py-2.5 pl-9 pr-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-amber-400/40"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={qrLoading || !qrInput.trim()}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {qrLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>) : (<><QrCode className="h-4 w-4" /> Générer</>)}
-                </button>
-              </div>
-              {qrError && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> {qrError}
-                </div>
-              )}
-            </form>
-
-            {qrDataUrl && (
-              <div className="mt-6 flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-                <img src={qrDataUrl} alt="QR code généré" className="h-56 w-56 rounded-2xl bg-white p-3 shadow-lg" />
-                <p className="max-w-full break-all text-center text-xs text-slate-400">{qrInput}</p>
-                <a
-                  href={qrDataUrl}
-                  download="qr-code.png"
-                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02]"
-                >
-                  <Download className="h-4 w-4" /> Télécharger le PNG
-                </a>
-              </div>
-            )}
-
-            <p className="mt-10 text-center text-xs text-slate-500">© Alex Graph — Générateur de QR code</p>
-          </div>
+          <QrStudio onHome={goHome} />
         </main>
+
       ) : view === "codex" ? (
         /* ============ CODEX — DASHBOARD + ÉDITEUR DE JEUX 2D ============ */
         activeCodexProject ? (

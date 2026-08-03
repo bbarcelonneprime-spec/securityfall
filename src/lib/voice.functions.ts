@@ -18,7 +18,7 @@ const ELEVENLABS_KEY_HELP =
   "Clé ElevenLabs invalide : colle uniquement ta clé API commençant par sk_ dans le secret ELEVENLABS_API_KEY.";
 
 export const synthesizeVoice = createServerFn({ method: "POST" })
-  .inputValidator((data: { text: string; voiceId?: string }) => {
+  .inputValidator((data: { text: string; voiceId?: string; speed?: number; style?: number; stability?: number }) => {
     if (!data?.text || typeof data.text !== "string" || !data.text.trim()) {
       throw new Error("Texte invalide.");
     }
@@ -27,7 +27,15 @@ export const synthesizeVoice = createServerFn({ method: "POST" })
       typeof data.voiceId === "string" && VALID_VOICE_IDS.has(data.voiceId)
         ? data.voiceId
         : "JBFqnCBsd6RMkjVDRZzb";
-    return { text: data.text.trim(), voiceId };
+    const clamp = (v: unknown, min: number, max: number, def: number) =>
+      typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : def;
+    return {
+      text: data.text.trim(),
+      voiceId,
+      speed: clamp(data.speed, 0.7, 1.2, 1),
+      style: clamp(data.style, 0, 1, 0.3),
+      stability: clamp(data.stability, 0, 1, 0.5),
+    };
   })
   .handler(async ({ data }) => {
     const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -45,14 +53,16 @@ export const synthesizeVoice = createServerFn({ method: "POST" })
           text: data.text,
           model_id: "eleven_multilingual_v2",
           voice_settings: {
-            stability: 0.5,
+            stability: data.stability,
             similarity_boost: 0.75,
-            style: 0.3,
+            style: data.style,
             use_speaker_boost: true,
+            speed: data.speed,
           },
         }),
       },
     );
+
 
     if (res.status === 401) return { audio: null, error: ELEVENLABS_KEY_HELP };
     if (res.status === 429) return { audio: null, error: "Trop de requêtes. Réessaie dans un instant." };
