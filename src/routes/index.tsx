@@ -34,6 +34,10 @@ import LoginScreen from "@/components/LoginScreen";
 import UserMenu from "@/components/UserMenu";
 import AuroraBackground from "@/components/AuroraBackground";
 import VoiceOverlay from "@/components/VoiceOverlay";
+import VoiceStudio from "@/components/VoiceStudio";
+import QrStudio from "@/components/QrStudio";
+import BgRemoveStudio from "@/components/BgRemoveStudio";
+
 import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
 const alexLogo = alexStarLogoAsset.url;
 const alexGraphLogo = alexStarLogoAsset.url;
