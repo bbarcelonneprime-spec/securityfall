@@ -1784,6 +1784,57 @@ function Index() {
           <QrStudio onHome={goHome} />
         </main>
 
+      ) : view === "tonia" ? (
+        /* ============ TON IA — ASSISTANT PERSONNALISÉ ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <TonIa
+            onHome={goHome}
+            onRun={(p) => runToolChat(p)}
+            onPublish={async (p) => {
+              await handleSaveTool({
+                name: p.name,
+                emoji: p.emoji,
+                description: p.description,
+                category: "general",
+                systemPrompt: p.systemPrompt,
+                starter: p.starter,
+                isPublic: false,
+              });
+            }}
+          />
+        </main>
+
+      ) : view === "studio" ? (
+        /* ============ ALEX STUDIO — CRÉATEUR D'OUTILS IA ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <AlexStudio
+            onHome={goHome}
+            tools={myTools}
+            loading={myToolsLoading}
+            onSave={handleSaveTool}
+            onDelete={handleDeleteTool}
+            onDraftFromIdea={async (idea) => await draftToolFn({ data: { idea } })}
+            onRun={(p) => runToolChat(p)}
+            onGoMarketplace={goToMarketplace}
+          />
+        </main>
+
+      ) : view === "marketplace" ? (
+        /* ============ ALEX MARKETPLACE — OUTILS DE LA COMMUNAUTÉ ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <AlexMarketplace
+            onHome={goHome}
+            tools={marketTools}
+            loading={marketLoading}
+            onInstall={handleInstallTool}
+            onRun={(p) => runToolChat(p)}
+            onGoStudio={goToStudio}
+          />
+        </main>
+
       ) : view === "codex" ? (
         /* ============ CODEX — DASHBOARD + ÉDITEUR DE JEUX 2D ============ */
         activeCodexProject ? (
