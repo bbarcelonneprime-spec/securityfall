@@ -819,6 +819,78 @@ function Index() {
 
   const goToCodex = () => setView("codex");
 
+  // ===== TON IA / Alex Studio / Alex Marketplace =====
+  const listMyToolsFn = useServerFn(listMyTools);
+  const listMarketFn = useServerFn(listMarketplaceTools);
+  const saveToolSrv = useServerFn(saveToolFn);
+  const deleteToolSrv = useServerFn(deleteToolFn);
+  const installToolSrv = useServerFn(installToolFn);
+  const runToolFn = useServerFn(runTool);
+  const draftToolFn = useServerFn(draftToolFromIdea);
+
+  const [myTools, setMyTools] = useState<AlexTool[]>([]);
+  const [marketTools, setMarketTools] = useState<AlexTool[]>([]);
+  const [myToolsLoading, setMyToolsLoading] = useState(false);
+  const [marketLoading, setMarketLoading] = useState(false);
+
+  const authorName =
+    (session?.user.user_metadata?.full_name as string | undefined) ||
+    session?.user.email?.split("@")[0] ||
+    "Anonyme";
+
+  const refreshMyTools = async () => {
+    setMyToolsLoading(true);
+    try {
+      setMyTools(await listMyToolsFn({}));
+    } catch (e) {
+      console.error("Tools list error", e);
+    } finally {
+      setMyToolsLoading(false);
+    }
+  };
+
+  const refreshMarket = async () => {
+    setMarketLoading(true);
+    try {
+      setMarketTools(await listMarketFn({}));
+    } catch (e) {
+      console.error("Marketplace list error", e);
+    } finally {
+      setMarketLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!session) return;
+    if (view === "studio") void refreshMyTools();
+    if (view === "marketplace") void refreshMarket();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, session]);
+
+  const goToTonIa = () => setView("tonia");
+  const goToStudio = () => setView("studio");
+  const goToMarketplace = () => setView("marketplace");
+
+  const runToolChat = async (p: { systemPrompt: string; model?: string; messages: { role: "user" | "assistant"; content: string }[] }) => {
+    const res = await runToolFn({ data: { systemPrompt: p.systemPrompt, model: p.model, messages: p.messages } });
+    return res.content;
+  };
+
+  const handleSaveTool = async (draft: ToolDraft) => {
+    await saveToolSrv({ data: { ...draft, authorName } });
+    await refreshMyTools();
+  };
+
+  const handleDeleteTool = async (id: string) => {
+    await deleteToolSrv({ data: { id } });
+    setMyTools((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleInstallTool = async (id: string) => {
+    await installToolSrv({ data: { id } });
+    setMarketTools((prev) => prev.map((t) => (t.id === id ? { ...t, installs: t.installs + 1 } : t)));
+  };
+
   // Charge les projets Codex à l'ouverture de la vue.
   useEffect(() => {
     if (view !== "codex" || codexLoaded || !session) return;
