@@ -1319,6 +1319,9 @@ function Index() {
                     qr: goToQr,
                     codex: goToCodex,
                     library: goToLibrary,
+                    tonia: goToTonIa,
+                    studio: goToStudio,
+                    marketplace: goToMarketplace,
                     theme: () => setThemeOpen(true),
                   };
                   return (
