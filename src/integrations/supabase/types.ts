@@ -68,6 +68,57 @@ export type Database = {
         }
         Relationships: []
       }
+      alex_tools: {
+        Row: {
+          author_name: string
+          category: string
+          created_at: string
+          description: string
+          emoji: string
+          id: string
+          installs: number
+          is_public: boolean
+          model: string
+          name: string
+          starter: string
+          system_prompt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_name?: string
+          category?: string
+          created_at?: string
+          description?: string
+          emoji?: string
+          id?: string
+          installs?: number
+          is_public?: boolean
+          model?: string
+          name: string
+          starter?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          category?: string
+          created_at?: string
+          description?: string
+          emoji?: string
+          id?: string
+          installs?: number
+          is_public?: boolean
+          model?: string
+          name?: string
+          starter?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       codex_projects: {
         Row: {
           created_at: string
@@ -139,7 +190,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_tool_installs: {
+        Args: { _tool_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
