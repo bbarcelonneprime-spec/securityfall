@@ -7,7 +7,7 @@ import {
   Sparkles, Plus, Image as ImageIcon, Trash2, MessagesSquare, Search, LibraryBig, Mic, PanelLeft,
   Telescope, Code2, PenLine, Plane, ChefHat, GraduationCap, Gem, ArrowRight, Home, BrainCircuit,
   AudioLines, Volume2, Play, MicOff, Square, FileText, Copy, Palette, Check, RotateCcw, Wallpaper, Crown,
-  Scissors, UploadCloud, ChevronDown, Cpu, Zap, QrCode, Headphones, VolumeX, Link2, Gamepad2, Wand2, RefreshCw,
+  Scissors, UploadCloud, ChevronDown, Cpu, Zap, QrCode, Headphones, VolumeX, Link2, Gamepad2, Wand2, RefreshCw, Store,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { analyzeEmail } from "../lib/analyze";
@@ -37,6 +37,13 @@ import VoiceOverlay from "@/components/VoiceOverlay";
 import VoiceStudio from "@/components/VoiceStudio";
 import QrStudio from "@/components/QrStudio";
 import BgRemoveStudio from "@/components/BgRemoveStudio";
+import TonIa from "@/components/TonIa";
+import AlexStudio, { type ToolDraft } from "@/components/AlexStudio";
+import AlexMarketplace from "@/components/AlexMarketplace";
+import {
+  listMyTools, listMarketplaceTools, saveTool as saveToolFn, deleteTool as deleteToolFn,
+  installTool as installToolFn, runTool, draftToolFromIdea, type AlexTool,
+} from "../lib/tools.functions";
 
 import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
 const alexLogo = alexStarLogoAsset.url;
@@ -71,6 +78,9 @@ const HOME_TOOLS: HomeTool[] = [
   { id: "bgremove", label: "Retirer l'arrière-plan", desc: "Détache un sujet en un clic", icon: Scissors, gradient: "from-amber-500 to-orange-600" },
   { id: "qr", label: "QR Code", desc: "Génère et télécharge un QR", icon: QrCode, gradient: "from-slate-500 to-slate-700" },
   { id: "library", label: "Librairie", desc: "Toutes tes images générées", icon: LibraryBig, gradient: "from-teal-500 to-emerald-600" },
+  { id: "tonia", label: "TON IA", desc: "Crée ton assistant IA personnalisé", icon: BrainCircuit, gradient: "from-cyan-500 to-blue-600" },
+  { id: "studio", label: "Alex Studio", desc: "Fabrique tes propres outils IA", icon: Wand2, gradient: "from-purple-500 to-violet-600" },
+  { id: "marketplace", label: "Alex Marketplace", desc: "Outils IA de la communauté", icon: Store, gradient: "from-emerald-500 to-teal-600" },
   { id: "theme", label: "Thème & couleurs", desc: "Personnalise tout le site", icon: Palette, gradient: "from-rose-500 to-violet-600" },
   { id: "alexapi", label: "Alex API", desc: "Plateforme d'API Alex", icon: Zap, gradient: "from-indigo-500 to-blue-600", href: "https://alex-code-flow.base44.app/" },
   { id: "alexcode", label: "Alex Code", desc: "Génère des apps web", icon: Code2, gradient: "from-purple-500 to-fuchsia-600", href: "https://married-alex-code-flow.base44.app/" },
@@ -160,7 +170,7 @@ function Index() {
   }, []);
 
   // View toggle
-  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove" | "qr" | "codex">("home");
+  const [view, setView] = useState<"home" | "email" | "alex" | "voice" | "library" | "bgremove" | "qr" | "codex" | "tonia" | "studio" | "marketplace">("home");
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -809,6 +819,78 @@ function Index() {
 
   const goToCodex = () => setView("codex");
 
+  // ===== TON IA / Alex Studio / Alex Marketplace =====
+  const listMyToolsFn = useServerFn(listMyTools);
+  const listMarketFn = useServerFn(listMarketplaceTools);
+  const saveToolSrv = useServerFn(saveToolFn);
+  const deleteToolSrv = useServerFn(deleteToolFn);
+  const installToolSrv = useServerFn(installToolFn);
+  const runToolFn = useServerFn(runTool);
+  const draftToolFn = useServerFn(draftToolFromIdea);
+
+  const [myTools, setMyTools] = useState<AlexTool[]>([]);
+  const [marketTools, setMarketTools] = useState<AlexTool[]>([]);
+  const [myToolsLoading, setMyToolsLoading] = useState(false);
+  const [marketLoading, setMarketLoading] = useState(false);
+
+  const authorName =
+    (session?.user.user_metadata?.full_name as string | undefined) ||
+    session?.user.email?.split("@")[0] ||
+    "Anonyme";
+
+  const refreshMyTools = async () => {
+    setMyToolsLoading(true);
+    try {
+      setMyTools(await listMyToolsFn({}));
+    } catch (e) {
+      console.error("Tools list error", e);
+    } finally {
+      setMyToolsLoading(false);
+    }
+  };
+
+  const refreshMarket = async () => {
+    setMarketLoading(true);
+    try {
+      setMarketTools(await listMarketFn({}));
+    } catch (e) {
+      console.error("Marketplace list error", e);
+    } finally {
+      setMarketLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!session) return;
+    if (view === "studio") void refreshMyTools();
+    if (view === "marketplace") void refreshMarket();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, session]);
+
+  const goToTonIa = () => setView("tonia");
+  const goToStudio = () => setView("studio");
+  const goToMarketplace = () => setView("marketplace");
+
+  const runToolChat = async (p: { systemPrompt: string; model?: string; messages: { role: "user" | "assistant"; content: string }[] }) => {
+    const res = await runToolFn({ data: { systemPrompt: p.systemPrompt, model: p.model, messages: p.messages } });
+    return res.content;
+  };
+
+  const handleSaveTool = async (draft: ToolDraft) => {
+    await saveToolSrv({ data: { ...draft, authorName } });
+    await refreshMyTools();
+  };
+
+  const handleDeleteTool = async (id: string) => {
+    await deleteToolSrv({ data: { id } });
+    setMyTools((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleInstallTool = async (id: string) => {
+    await installToolSrv({ data: { id } });
+    setMarketTools((prev) => prev.map((t) => (t.id === id ? { ...t, installs: t.installs + 1 } : t)));
+  };
+
   // Charge les projets Codex à l'ouverture de la vue.
   useEffect(() => {
     if (view !== "codex" || codexLoaded || !session) return;
@@ -1237,6 +1319,9 @@ function Index() {
                     qr: goToQr,
                     codex: goToCodex,
                     library: goToLibrary,
+                    tonia: goToTonIa,
+                    studio: goToStudio,
+                    marketplace: goToMarketplace,
                     theme: () => setThemeOpen(true),
                   };
                   return (
@@ -1697,6 +1782,57 @@ function Index() {
         <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
           <AuroraBackground />
           <QrStudio onHome={goHome} />
+        </main>
+
+      ) : view === "tonia" ? (
+        /* ============ TON IA — ASSISTANT PERSONNALISÉ ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <TonIa
+            onHome={goHome}
+            onRun={(p) => runToolChat(p)}
+            onPublish={async (p) => {
+              await handleSaveTool({
+                name: p.name,
+                emoji: p.emoji,
+                description: p.description,
+                category: "general",
+                systemPrompt: p.systemPrompt,
+                starter: p.starter,
+                isPublic: false,
+              });
+            }}
+          />
+        </main>
+
+      ) : view === "studio" ? (
+        /* ============ ALEX STUDIO — CRÉATEUR D'OUTILS IA ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <AlexStudio
+            onHome={goHome}
+            tools={myTools}
+            loading={myToolsLoading}
+            onSave={handleSaveTool}
+            onDelete={handleDeleteTool}
+            onDraftFromIdea={async (idea) => await draftToolFn({ data: { idea } })}
+            onRun={(p) => runToolChat(p)}
+            onGoMarketplace={goToMarketplace}
+          />
+        </main>
+
+      ) : view === "marketplace" ? (
+        /* ============ ALEX MARKETPLACE — OUTILS DE LA COMMUNAUTÉ ============ */
+        <main className="relative min-h-screen overflow-hidden text-slate-100" style={{ background: "var(--ag-bg, #0b0f1c)" }}>
+          <AuroraBackground />
+          <AlexMarketplace
+            onHome={goHome}
+            tools={marketTools}
+            loading={marketLoading}
+            onInstall={handleInstallTool}
+            onRun={(p) => runToolChat(p)}
+            onGoStudio={goToStudio}
+          />
         </main>
 
       ) : view === "codex" ? (
