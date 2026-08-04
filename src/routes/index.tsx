@@ -37,6 +37,13 @@ import VoiceOverlay from "@/components/VoiceOverlay";
 import VoiceStudio from "@/components/VoiceStudio";
 import QrStudio from "@/components/QrStudio";
 import BgRemoveStudio from "@/components/BgRemoveStudio";
+import TonIa from "@/components/TonIa";
+import AlexStudio, { type ToolDraft } from "@/components/AlexStudio";
+import AlexMarketplace from "@/components/AlexMarketplace";
+import {
+  listMyTools, listMarketplaceTools, saveTool as saveToolFn, deleteTool as deleteToolFn,
+  installTool as installToolFn, runTool, draftToolFromIdea, type AlexTool,
+} from "../lib/tools.functions";
 
 import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
 const alexLogo = alexStarLogoAsset.url;
