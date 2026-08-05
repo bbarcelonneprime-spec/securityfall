@@ -217,12 +217,32 @@ export default function AlexStudio({
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : draft.id ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {draft.id ? "Mettre à jour" : "Créer l'outil"}
             </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!draft.name.trim() || !draft.systemPrompt.trim()) return;
+                const next = { ...draft, isPublic: true };
+                setDraft(next);
+                setSaving(true);
+                try {
+                  await onSave(next);
+                  onGoMarketplace();
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving || !draft.name.trim() || !draft.systemPrompt.trim()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/25 disabled:opacity-50"
+            >
+              <Globe className="h-4 w-4" /> Publier sur la Marketplace
+            </button>
             {(draft.name || draft.systemPrompt) && (
               <button type="button" onClick={() => setDraft(EMPTY)} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10">
                 Annuler
               </button>
             )}
           </div>
+
         </section>
 
         {/* Mes outils */}
