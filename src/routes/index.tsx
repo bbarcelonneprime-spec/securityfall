@@ -1791,6 +1791,16 @@ function Index() {
           <TonIa
             onHome={goHome}
             onRun={(p) => runToolChat(p)}
+            onGenerateImage={async (prompt) => {
+              const res = await alexImageFn({ data: { prompt } });
+              try {
+                const saved = await saveImageFn({ data: { prompt, dataUrl: res.imageUrl } });
+                setAlexImages((prev) => [saved, ...prev]);
+                return { id: saved.id, prompt, url: saved.imageUrl };
+              } catch {
+                return { id: `${Date.now()}`, prompt, url: res.imageUrl };
+              }
+            }}
             onPublish={async (p) => {
               await handleSaveTool({
                 name: p.name,
@@ -1804,6 +1814,7 @@ function Index() {
             }}
           />
         </main>
+
 
       ) : view === "studio" ? (
         /* ============ ALEX STUDIO — CRÉATEUR D'OUTILS IA ============ */
