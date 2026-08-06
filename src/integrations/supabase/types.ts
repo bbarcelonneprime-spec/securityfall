@@ -68,54 +68,151 @@ export type Database = {
         }
         Relationships: []
       }
-      alex_tools: {
+      alex_installs: {
+        Row: {
+          created_at: string
+          id: string
+          installed_version: string
+          tool_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          installed_version?: string
+          tool_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          installed_version?: string
+          tool_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alex_installs_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "alex_tools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alex_reviews: {
         Row: {
           author_name: string
-          category: string
+          comment: string
           created_at: string
-          description: string
-          emoji: string
           id: string
-          installs: number
-          is_public: boolean
-          model: string
-          name: string
-          starter: string
-          system_prompt: string
+          rating: number
+          tool_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
           author_name?: string
-          category?: string
+          comment?: string
           created_at?: string
-          description?: string
-          emoji?: string
           id?: string
-          installs?: number
-          is_public?: boolean
-          model?: string
-          name: string
-          starter?: string
-          system_prompt?: string
+          rating?: number
+          tool_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
           author_name?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          tool_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alex_reviews_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "alex_tools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alex_tools: {
+        Row: {
+          agent_id: string
+          app_html: string
+          author_name: string
+          category: string
+          changelog: Json
+          created_at: string
+          description: string
+          emoji: string
+          favorite: boolean
+          id: string
+          installs: number
+          is_public: boolean
+          model: string
+          name: string
+          screenshots: Json
+          starter: string
+          status: string
+          system_prompt: string
+          updated_at: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          agent_id?: string
+          app_html?: string
+          author_name?: string
           category?: string
+          changelog?: Json
           created_at?: string
           description?: string
           emoji?: string
+          favorite?: boolean
+          id?: string
+          installs?: number
+          is_public?: boolean
+          model?: string
+          name: string
+          screenshots?: Json
+          starter?: string
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id: string
+          version?: string
+        }
+        Update: {
+          agent_id?: string
+          app_html?: string
+          author_name?: string
+          category?: string
+          changelog?: Json
+          created_at?: string
+          description?: string
+          emoji?: string
+          favorite?: boolean
           id?: string
           installs?: number
           is_public?: boolean
           model?: string
           name?: string
+          screenshots?: Json
           starter?: string
+          status?: string
           system_prompt?: string
           updated_at?: string
           user_id?: string
+          version?: string
         }
         Relationships: []
       }
