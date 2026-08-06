@@ -42,7 +42,7 @@ import AlexStudio, { type ToolDraft } from "@/components/AlexStudio";
 import AlexMarketplace from "@/components/AlexMarketplace";
 import {
   listMyTools, listMarketplaceTools, saveTool as saveToolFn, deleteTool as deleteToolFn,
-  installTool as installToolFn, runTool, draftToolFromIdea, toggleToolFavorite, publishTool, buildToolApp,
+  installTool as installToolFn, runTool, toggleToolFavorite, publishTool, buildToolApp,
 } from "../lib/tools.functions";
 import type { AlexTool } from "../lib/tools-catalog";
 
@@ -827,7 +827,6 @@ function Index() {
   const deleteToolSrv = useServerFn(deleteToolFn);
   const installToolSrv = useServerFn(installToolFn);
   const runToolFn = useServerFn(runTool);
-  const draftToolFn = useServerFn(draftToolFromIdea);
 
   const [myTools, setMyTools] = useState<AlexTool[]>([]);
   const [marketTools, setMarketTools] = useState<AlexTool[]>([]);
