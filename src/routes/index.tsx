@@ -42,7 +42,7 @@ import AlexStudio, { type ToolDraft } from "@/components/AlexStudio";
 import AlexMarketplace from "@/components/AlexMarketplace";
 import {
   listMyTools, listMarketplaceTools, saveTool as saveToolFn, deleteTool as deleteToolFn,
-  installTool as installToolFn, runTool, draftToolFromIdea, type AlexTool,
+  installTool as installToolFn, runTool, draftToolFromIdea, toggleToolFavorite, publishTool, buildToolApp,
 } from "../lib/tools.functions";
 
 import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
