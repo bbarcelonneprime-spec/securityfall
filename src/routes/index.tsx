@@ -42,8 +42,9 @@ import AlexStudio, { type ToolDraft } from "@/components/AlexStudio";
 import AlexMarketplace from "@/components/AlexMarketplace";
 import {
   listMyTools, listMarketplaceTools, saveTool as saveToolFn, deleteTool as deleteToolFn,
-  installTool as installToolFn, runTool, draftToolFromIdea, type AlexTool,
+  installTool as installToolFn, runTool, toggleToolFavorite, publishTool, buildToolApp,
 } from "../lib/tools.functions";
+import type { AlexTool } from "../lib/tools-catalog";
 
 import alexStarLogoAsset from "@/assets/alex-star-logo.png.asset.json";
 const alexLogo = alexStarLogoAsset.url;
@@ -826,7 +827,6 @@ function Index() {
   const deleteToolSrv = useServerFn(deleteToolFn);
   const installToolSrv = useServerFn(installToolFn);
   const runToolFn = useServerFn(runTool);
-  const draftToolFn = useServerFn(draftToolFromIdea);
 
   const [myTools, setMyTools] = useState<AlexTool[]>([]);
   const [marketTools, setMarketTools] = useState<AlexTool[]>([]);
@@ -876,9 +876,14 @@ function Index() {
     return res.content;
   };
 
-  const handleSaveTool = async (draft: ToolDraft) => {
-    await saveToolSrv({ data: { ...draft, authorName } });
+  const toggleFavSrv = useServerFn(toggleToolFavorite);
+  const publishToolSrv = useServerFn(publishTool);
+  const buildAppSrv = useServerFn(buildToolApp);
+
+  const handleSaveTool = async (draft: ToolDraft): Promise<AlexTool> => {
+    const saved = await saveToolSrv({ data: { ...draft, authorName } });
     await refreshMyTools();
+    return saved;
   };
 
   const handleDeleteTool = async (id: string) => {
@@ -1826,8 +1831,16 @@ function Index() {
             loading={myToolsLoading}
             onSave={handleSaveTool}
             onDelete={handleDeleteTool}
-            onDraftFromIdea={async (idea) => await draftToolFn({ data: { idea } })}
-            onRun={(p) => runToolChat(p)}
+            onToggleFavorite={async (id, favorite) => {
+              await toggleFavSrv({ data: { id, favorite } });
+              setMyTools((prev) => prev.map((t) => (t.id === id ? { ...t, favorite } : t)));
+            }}
+            onPublish={async (id) => {
+              await publishToolSrv({ data: { id } });
+              await refreshMyTools();
+            }}
+            onInstall={handleInstallTool}
+            onBuild={async (p) => await buildAppSrv({ data: p })}
             onGoMarketplace={goToMarketplace}
           />
         </main>

@@ -4,7 +4,7 @@ import {
   Home, Store, Search, Loader2, Download, PlayCircle, Users, X, Wand2, Check,
 } from "lucide-react";
 import ToolChat, { type ToolMsg } from "./ToolChat";
-import { TOOL_CATEGORIES, type AlexTool } from "@/lib/tools.functions";
+import { TOOL_CATEGORIES, categoryLabel, type AlexTool } from "@/lib/tools-catalog";
 
 type Props = {
   onHome: () => void;
@@ -121,7 +121,7 @@ export default function AlexMarketplace({ onHome, tools, loading, onInstall, onR
               <p className="line-clamp-3 flex-1 text-sm text-slate-300">{t.description || "Sans description"}</p>
               <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
                 <span className="rounded-full bg-white/5 px-2 py-0.5 capitalize">
-                  {TOOL_CATEGORIES.find((c) => c.id === t.category)?.label ?? t.category}
+                  {categoryLabel(t.category)}
                 </span>
                 <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {t.installs}</span>
               </div>
