@@ -2,126 +2,13 @@
 // exécution d'outils IA personnalisés (avec application générée en HTML).
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { runChat } from "./ai-chat.server";
-import { callOpenAI } from "./ai-chat.server";
+import { runChat, callOpenAI } from "./ai-chat.server";
 import { DEFAULT_ALEX_MODEL } from "./alex-models";
-
-export type ToolChangelogEntry = { version: string; date: number; note: string };
-
-export type AlexTool = {
-  id: string;
-  userId: string;
-  authorName: string;
-  name: string;
-  description: string;
-  category: string;
-  emoji: string;
-  systemPrompt: string;
-  model: string;
-  agentId: string;
-  starter: string;
-  appHtml: string;
-  version: string;
-  status: string;
-  favorite: boolean;
-  isPublic: boolean;
-  installs: number;
-  changelog: ToolChangelogEntry[];
-  screenshots: string[];
-  createdAt: number;
-  updatedAt: number;
-  rating?: number;
-  ratingCount?: number;
-};
-
-export type ToolReview = {
-  id: string;
-  toolId: string;
-  authorName: string;
-  rating: number;
-  comment: string;
-  createdAt: number;
-  mine?: boolean;
-};
-
-export const TOOL_CATEGORIES = [
-  { id: "general", label: "Général" },
-  { id: "writing", label: "Écriture" },
-  { id: "code", label: "Code" },
-  { id: "business", label: "Business" },
-  { id: "education", label: "Éducation" },
-  { id: "creative", label: "Créatif" },
-  { id: "productivity", label: "Productivité" },
-  { id: "fun", label: "Fun" },
-] as const;
-
-type Row = {
-  id: string;
-  user_id: string;
-  author_name: string;
-  name: string;
-  description: string;
-  category: string;
-  emoji: string;
-  system_prompt: string;
-  model: string;
-  agent_id: string;
-  starter: string;
-  app_html: string;
-  version: string;
-  status: string;
-  favorite: boolean;
-  is_public: boolean;
-  installs: number;
-  changelog: ToolChangelogEntry[] | null;
-  screenshots: string[] | null;
-  created_at: string;
-  updated_at: string;
-};
-
-const SELECT =
-  "id, user_id, author_name, name, description, category, emoji, system_prompt, model, agent_id, starter, app_html, version, status, favorite, is_public, installs, changelog, screenshots, created_at, updated_at";
-
-function toTool(r: Row): AlexTool {
-  return {
-    id: r.id,
-    userId: r.user_id,
-    authorName: r.author_name,
-    name: r.name,
-    description: r.description,
-    category: r.category,
-    emoji: r.emoji,
-    systemPrompt: r.system_prompt,
-    model: r.model,
-    agentId: r.agent_id ?? "",
-    starter: r.starter,
-    appHtml: r.app_html ?? "",
-    version: r.version ?? "1.0.0",
-    status: r.status ?? "draft",
-    favorite: Boolean(r.favorite),
-    isPublic: r.is_public,
-    installs: r.installs,
-    changelog: Array.isArray(r.changelog) ? r.changelog : [],
-    screenshots: Array.isArray(r.screenshots) ? r.screenshots : [],
-    createdAt: new Date(r.created_at).getTime(),
-    updatedAt: new Date(r.updated_at).getTime(),
-  };
-}
-
-function clean(v: unknown, max: number, fallback = "") {
-  return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : fallback;
-}
-
-function bump(version: string): string {
-  const parts = version.split(".").map((p) => Number(p) || 0);
-  while (parts.length < 3) parts.push(0);
-  parts[2] += 1;
-  return parts.slice(0, 3).join(".");
-}
-
-/* ------------------------------------------------------------------ */
-/* Lecture                                                            */
-/* ------------------------------------------------------------------ */
+import type { ToolChangelogEntry, ToolReview } from "./tools-catalog";
+import {
+  TOOL_SELECT, toTool, clean, bumpVersion, extractHtml, APP_SYSTEM_PROMPT, DRAFT_SYSTEM_PROMPT,
+  type ToolRow,
+} from "./tools.server";
 
 // Mes projets (Alex Studio)
 export const listMyTools = createServerFn({ method: "GET" })
@@ -129,11 +16,11 @@ export const listMyTools = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("alex_tools")
-      .select(SELECT)
+      .select(TOOL_SELECT)
       .eq("user_id", context.userId)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return ((data ?? []) as Row[]).map(toTool);
+    return ((data ?? []) as ToolRow[]).map(toTool);
   });
 
 // Outils publiés (Alex Marketplace) + notes moyennes
@@ -143,7 +30,7 @@ export const listMarketplaceTools = createServerFn({ method: "GET" })
     const [toolsRes, reviewsRes] = await Promise.all([
       context.supabase
         .from("alex_tools")
-        .select(SELECT)
+        .select(TOOL_SELECT)
         .eq("is_public", true)
         .order("installs", { ascending: false })
         .limit(300),
@@ -159,7 +46,7 @@ export const listMarketplaceTools = createServerFn({ method: "GET" })
       agg.set(r.tool_id, cur);
     }
 
-    return ((toolsRes.data ?? []) as Row[]).map((r) => {
+    return ((toolsRes.data ?? []) as ToolRow[]).map((r) => {
       const t = toTool(r);
       const a = agg.get(r.id);
       return { ...t, rating: a ? a.sum / a.n : 0, ratingCount: a?.n ?? 0 };
@@ -172,10 +59,10 @@ export const listInstalledTools = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("alex_installs")
-      .select(`tool_id, installed_version, created_at, alex_tools!inner(${SELECT})`)
+      .select(`tool_id, installed_version, created_at, alex_tools!inner(${TOOL_SELECT})`)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return ((data ?? []) as Array<{ tool_id: string; installed_version: string; alex_tools: Row }>).map((r) => ({
+    return ((data ?? []) as unknown as Array<{ installed_version: string; alex_tools: ToolRow }>).map((r) => ({
       installedVersion: r.installed_version,
       tool: toTool(r.alex_tools),
     }));
@@ -208,51 +95,47 @@ export const listToolReviews = createServerFn({ method: "POST" })
     );
   });
 
-/* ------------------------------------------------------------------ */
-/* Écriture                                                           */
-/* ------------------------------------------------------------------ */
-
-type SaveInput = {
-  id?: string;
-  name: string;
-  description?: string;
-  category?: string;
-  emoji?: string;
-  systemPrompt?: string;
-  model?: string;
-  agentId?: string;
-  starter?: string;
-  appHtml?: string;
-  isPublic?: boolean;
-  favorite?: boolean;
-  status?: string;
-  authorName?: string;
-  changeNote?: string;
-};
-
 export const saveTool = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: SaveInput) => {
-    const name = clean(data?.name, 80);
-    if (!name) throw new Error("Donne un nom à ton projet.");
-    return {
-      id: typeof data.id === "string" && data.id ? data.id : undefined,
-      name,
-      description: clean(data.description, 400),
-      category: clean(data.category, 40, "general"),
-      emoji: clean(data.emoji, 8, "✨"),
-      systemPrompt: clean(data.systemPrompt, 8000, "Tu es un assistant IA utile."),
-      model: clean(data.model, 80, DEFAULT_ALEX_MODEL),
-      agentId: clean(data.agentId, 80),
-      starter: clean(data.starter, 400),
-      appHtml: typeof data.appHtml === "string" ? data.appHtml.slice(0, 400000) : "",
-      isPublic: Boolean(data.isPublic),
-      favorite: Boolean(data.favorite),
-      status: clean(data.status, 20, "draft"),
-      authorName: clean(data.authorName, 80, "Anonyme"),
-      changeNote: clean(data.changeNote, 200),
-    };
-  })
+  .inputValidator(
+    (data: {
+      id?: string;
+      name: string;
+      description?: string;
+      category?: string;
+      emoji?: string;
+      systemPrompt?: string;
+      model?: string;
+      agentId?: string;
+      starter?: string;
+      appHtml?: string;
+      isPublic?: boolean;
+      favorite?: boolean;
+      status?: string;
+      authorName?: string;
+      changeNote?: string;
+    }) => {
+      const name = clean(data?.name, 80);
+      if (!name) throw new Error("Donne un nom à ton projet.");
+      return {
+        id: typeof data.id === "string" && data.id ? data.id : undefined,
+        name,
+        description: clean(data.description, 400),
+        category: clean(data.category, 40, "general"),
+        emoji: clean(data.emoji, 8, "✨"),
+        systemPrompt: clean(data.systemPrompt, 8000, "Tu es un assistant IA utile."),
+        model: clean(data.model, 80, DEFAULT_ALEX_MODEL),
+        agentId: clean(data.agentId, 80),
+        starter: clean(data.starter, 400),
+        appHtml: typeof data.appHtml === "string" ? data.appHtml.slice(0, 400000) : "",
+        isPublic: Boolean(data.isPublic),
+        favorite: Boolean(data.favorite),
+        status: clean(data.status, 20, "draft"),
+        authorName: clean(data.authorName, 80, "Anonyme"),
+        changeNote: clean(data.changeNote, 200),
+      };
+    },
+  )
   .handler(async ({ data, context }) => {
     let version = "1.0.0";
     let changelog: ToolChangelogEntry[] = [];
@@ -263,7 +146,7 @@ export const saveTool = createServerFn({ method: "POST" })
         .eq("id", data.id)
         .maybeSingle();
       if (prev) {
-        version = bump((prev.version as string) ?? "1.0.0");
+        version = bumpVersion((prev.version as string) ?? "1.0.0");
         changelog = Array.isArray(prev.changelog) ? (prev.changelog as ToolChangelogEntry[]) : [];
       }
     }
@@ -271,32 +154,34 @@ export const saveTool = createServerFn({ method: "POST" })
       changelog = [{ version, date: Date.now(), note: data.changeNote }, ...changelog].slice(0, 50);
     }
 
-    const payload = {
-      user_id: context.userId,
-      author_name: data.authorName,
-      name: data.name,
-      description: data.description,
-      category: data.category,
-      emoji: data.emoji,
-      system_prompt: data.systemPrompt,
-      model: data.model,
-      agent_id: data.agentId,
-      starter: data.starter,
-      app_html: data.appHtml,
-      is_public: data.isPublic,
-      favorite: data.favorite,
-      status: data.status,
-      version,
-      changelog,
-      ...(data.id ? { id: data.id } : {}),
-    };
     const { data: row, error } = await context.supabase
       .from("alex_tools")
-      .upsert(payload, { onConflict: "id" })
-      .select(SELECT)
+      .upsert(
+        {
+          user_id: context.userId,
+          author_name: data.authorName,
+          name: data.name,
+          description: data.description,
+          category: data.category,
+          emoji: data.emoji,
+          system_prompt: data.systemPrompt,
+          model: data.model,
+          agent_id: data.agentId,
+          starter: data.starter,
+          app_html: data.appHtml,
+          is_public: data.isPublic,
+          favorite: data.favorite,
+          status: data.status,
+          version,
+          changelog,
+          ...(data.id ? { id: data.id } : {}),
+        },
+        { onConflict: "id" },
+      )
+      .select(TOOL_SELECT)
       .single();
     if (error || !row) throw new Error(error?.message ?? "Enregistrement impossible.");
-    return toTool(row as Row);
+    return toTool(row as ToolRow);
   });
 
 export const toggleToolFavorite = createServerFn({ method: "POST" })
@@ -324,7 +209,7 @@ export const publishTool = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (readErr || !prev) throw new Error("Outil introuvable.");
-    const version = bump((prev.version as string) ?? "1.0.0");
+    const version = bumpVersion((prev.version as string) ?? "1.0.0");
     const changelog = [
       { version, date: Date.now(), note: data.note },
       ...(Array.isArray(prev.changelog) ? (prev.changelog as ToolChangelogEntry[]) : []),
@@ -334,10 +219,10 @@ export const publishTool = createServerFn({ method: "POST" })
       .from("alex_tools")
       .update({ is_public: true, status: "published", version, changelog })
       .eq("id", data.id)
-      .select(SELECT)
+      .select(TOOL_SELECT)
       .single();
     if (error || !row) throw new Error(error?.message ?? "Publication impossible.");
-    return toTool(row as Row);
+    return toTool(row as ToolRow);
   });
 
 export const deleteTool = createServerFn({ method: "POST" })
@@ -352,10 +237,6 @@ export const deleteTool = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/* ------------------------------------------------------------------ */
-/* Installation / désinstallation                                     */
-/* ------------------------------------------------------------------ */
-
 export const installTool = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => {
@@ -365,11 +246,11 @@ export const installTool = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: src, error } = await context.supabase
       .from("alex_tools")
-      .select(SELECT)
+      .select(TOOL_SELECT)
       .eq("id", data.id)
       .maybeSingle();
     if (error || !src) throw new Error("Cet outil n'est plus disponible.");
-    const tool = toTool(src as Row);
+    const tool = toTool(src as ToolRow);
 
     const { data: existing } = await context.supabase
       .from("alex_installs")
@@ -378,15 +259,15 @@ export const installTool = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (existing) {
-      if (existing.installed_version === tool.version) {
-        return { tool, installedVersion: tool.version, alreadyInstalled: true };
+      const already = (existing.installed_version as string) === tool.version;
+      if (!already) {
+        const { error: upErr } = await context.supabase
+          .from("alex_installs")
+          .update({ installed_version: tool.version })
+          .eq("id", existing.id as string);
+        if (upErr) throw new Error(upErr.message);
       }
-      const { error: upErr } = await context.supabase
-        .from("alex_installs")
-        .update({ installed_version: tool.version })
-        .eq("id", existing.id as string);
-      if (upErr) throw new Error(upErr.message);
-      return { tool, installedVersion: tool.version, alreadyInstalled: false };
+      return { tool, installedVersion: tool.version, alreadyInstalled: already };
     }
 
     const { error: insErr } = await context.supabase
@@ -416,10 +297,9 @@ export const rateTool = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { toolId: string; rating: number; comment?: string; authorName?: string }) => {
     if (!data?.toolId) throw new Error("Outil invalide.");
-    const rating = Math.min(5, Math.max(1, Math.round(Number(data.rating) || 5)));
     return {
       toolId: data.toolId,
-      rating,
+      rating: Math.min(5, Math.max(1, Math.round(Number(data.rating) || 5))),
       comment: clean(data.comment, 1000),
       authorName: clean(data.authorName, 80, "Anonyme"),
     };
@@ -439,10 +319,6 @@ export const rateTool = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/* ------------------------------------------------------------------ */
-/* IA — exécution, génération d'application, assistant de création     */
-/* ------------------------------------------------------------------ */
-
 // Exécute un outil (chat guidé par ses instructions)
 export const runTool = createServerFn({ method: "POST" })
   .inputValidator((data: { systemPrompt: string; model?: string; messages: { role: "user" | "assistant"; content: string }[] }) => {
@@ -461,28 +337,6 @@ export const runTool = createServerFn({ method: "POST" })
     return { content };
   });
 
-const APP_SYSTEM_PROMPT = `Tu es "Alex Studio", un moteur expert de création d'applications web.
-À partir de la description de l'utilisateur, tu génères UN SEUL fichier HTML complet et autonome implémentant l'application demandée.
-
-RÈGLES STRICTES :
-- Réponds UNIQUEMENT avec le code HTML, rien d'autre : pas d'explication, pas de markdown, pas de \`\`\`.
-- Commence exactement par <!DOCTYPE html> et termine par </html>.
-- Tout tient dans ce seul fichier : HTML + CSS (<style>) + JavaScript (<script>). Aucune dépendance externe, aucun CDN, aucune image distante.
-- Design haut de gamme : glassmorphism, coins arrondis, dégradés subtils, animations fluides, mode sombre élégant, responsive mobile.
-- L'application doit être immédiatement fonctionnelle, sans placeholder à compléter, sans erreur JavaScript.
-- Persiste les données de l'utilisateur avec localStorage quand c'est pertinent.
-- Interface entièrement en français.`;
-
-function extractHtml(raw: string): string {
-  let t = raw.trim();
-  const fence = t.match(/```(?:html)?\s*([\s\S]*?)```/i);
-  if (fence) t = fence[1].trim();
-  const start = t.indexOf("<!DOCTYPE");
-  const startAlt = start === -1 ? t.toLowerCase().indexOf("<html") : start;
-  if (startAlt > 0) t = t.slice(startAlt);
-  return t.trim();
-}
-
 // Construit ou améliore l'application d'un projet Alex Studio.
 export const buildToolApp = createServerFn({ method: "POST" })
   .inputValidator((data: { prompt: string; previousHtml?: string; context?: string }) => {
@@ -496,7 +350,7 @@ export const buildToolApp = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const userContent = data.previousHtml
-      ? `Voici l'application HTML actuelle :\n\`\`\`html\n${data.previousHtml}\n\`\`\`\n\nModification demandée : ${data.prompt}\n\nRenvoie le NOUVEAU fichier HTML complet intégrant la modification.`
+      ? `Voici l'application HTML actuelle :\n${data.previousHtml}\n\nModification demandée : ${data.prompt}\n\nRenvoie le NOUVEAU fichier HTML complet intégrant la modification.`
       : `${data.context ? `Contexte du projet : ${data.context}\n\n` : ""}Crée cette application : ${data.prompt}\n\nRenvoie uniquement le fichier HTML complet.`;
 
     const messages = [
@@ -527,11 +381,7 @@ export const draftToolFromIdea = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const raw = await runChat(DEFAULT_ALEX_MODEL, [
-      {
-        role: "system",
-        content:
-          "Tu conçois des outils IA. À partir d'une idée, retourne UNIQUEMENT un objet JSON valide (sans texte autour, sans balises markdown) avec les clés : name (court, français), emoji (1 emoji), description (1 phrase), category (parmi general, writing, code, business, education, creative, productivity, fun), systemPrompt (instructions détaillées et professionnelles pour l'IA, en français, 100-250 mots), starter (une phrase d'accueil que l'outil affiche à l'utilisateur).",
-      },
+      { role: "system", content: DRAFT_SYSTEM_PROMPT },
       { role: "user", content: data.idea },
     ]);
     const match = raw.match(/\{[\s\S]*\}/);
